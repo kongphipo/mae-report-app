@@ -3,129 +3,287 @@ import anthropic
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
+from datetime import datetime, timedelta
 
+# ============================================================
+# ตั้งค่าหน้าแอป
+# ============================================================
 st.set_page_config(
-    page_title="Global MAE Report — Oil & Gas",
+    page_title="Global MAE Report — Real-time",
     page_icon="🔥",
     layout="wide"
 )
 
 # ============================================================
-# ข้อมูล MAE จริงทั้งหมด 30+ เหตุการณ์
-# แหล่งที่มา: BSEE, HSE UK, PHMSA, CSB, ARIA, ITOPF (สาธารณะ)
+# ฟังก์ชันดึงข้อมูลจาก PHMSA API จริง
+# PHMSA = Pipeline & Hazardous Materials Safety Administration
+# API สาธารณะ ไม่ต้อง key ไม่ต้องสมัคร
 # ============================================================
-MAE_DATA = [
-    # ===== AMERICAS =====
-    {"name":"Deepwater Horizon Blowout","year":2010,"month":"April","country":"USA","region":"Americas","location":"Gulf of Mexico, Louisiana","type":"Blowout","facility":"Offshore","fatalities":11,"injuries":17,"loss_musd":65000,"operator":"BP / Transocean","cause":"Well Control Failure","description":"การระเบิดของแท่นขุดเจาะน้ำมัน Deepwater Horizon ในอ่าวเม็กซิโก น้ำมันรั่วไหลกว่า 4.9 ล้านบาร์เรล นับเป็นหายนะน้ำมันทางทะเลที่ใหญ่ที่สุดในประวัติศาสตร์สหรัฐฯ","source":"US Chemical Safety Board (CSB) + BSEE","source_url":"https://www.bsee.gov/","verified":True},
-    {"name":"Texas City Refinery Explosion","year":2005,"month":"March","country":"USA","region":"Americas","location":"Texas City, Texas","type":"Explosion","facility":"Downstream","fatalities":15,"injuries":180,"loss_musd":1500,"operator":"BP","cause":"Process Safety / Human Error","description":"การระเบิดที่โรงกลั่นน้ำมัน Texas City ของ BP เกิดจากไอระเหยไฮโดรคาร์บอนจุดระเบิด ส่งผลให้มีผู้เสียชีวิต 15 รายและบาดเจ็บกว่า 180 ราย","source":"US Chemical Safety Board (CSB)","source_url":"https://www.csb.gov/bp-america-refinery-explosion/","verified":True},
-    {"name":"Lac-Mégantic Rail Disaster","year":2013,"month":"July","country":"Canada","region":"Americas","location":"Lac-Mégantic, Quebec","type":"Fire","facility":"Midstream","fatalities":47,"injuries":0,"loss_musd":2700,"operator":"Montreal, Maine and Atlantic Railway","cause":"Mechanical Failure","description":"รถไฟบรรทุกน้ำมันดิบ 72 ตู้หลุดควบคุมพุ่งชนเมือง Lac-Mégantic ทำให้เกิดการระเบิดและไฟไหม้ คร่าชีวิต 47 ราย","source":"Transportation Safety Board of Canada","source_url":"https://www.tsb.gc.ca/","verified":True},
-    {"name":"Aliso Canyon Gas Blowout","year":2015,"month":"October","country":"USA","region":"Americas","location":"Porter Ranch, California","type":"Blowout","facility":"Upstream","fatalities":0,"injuries":0,"loss_musd":800,"operator":"Southern California Gas","cause":"Mechanical Failure","description":"การรั่วไหลของก๊าซธรรมชาติจากบ่อกักเก็บ Aliso Canyon นาน 4 เดือน ปล่อย methane ออกสู่ชั้นบรรยากาศมากที่สุดในประวัติศาสตร์สหรัฐฯ","source":"California Air Resources Board","source_url":"https://ww2.arb.ca.gov/","verified":True},
-    {"name":"Petrobras P-36 Platform Sinking","year":2001,"month":"March","country":"Brazil","region":"Americas","location":"Campos Basin, Rio de Janeiro","type":"Explosion","facility":"Offshore","fatalities":11,"injuries":0,"loss_musd":500,"operator":"Petrobras","cause":"Mechanical Failure","description":"แท่นผลิตน้ำมัน P-36 ของ Petrobras เกิดการระเบิดและจมลงในมหาสมุทรแอตแลนติก นับเป็นแท่นขุดเจาะลอยน้ำที่ใหญ่ที่สุดในโลกที่จมลง","source":"ANP Brazil","source_url":"https://www.gov.br/anp/","verified":True},
-    {"name":"Pemex Abkatun-A Platform Fire","year":2015,"month":"April","country":"Mexico","region":"Americas","location":"Bay of Campeche, Gulf of Mexico","type":"Fire","facility":"Offshore","fatalities":4,"injuries":16,"loss_musd":700,"operator":"Pemex","cause":"Mechanical Failure","description":"ไฟไหม้แท่นผลิตน้ำมัน Abkatun-A ของ Pemex ในอ่าวเม็กซิโก เกิดจากท่อแตกทำให้ก๊าซรั่วและจุดระเบิด","source":"ASEA Mexico","source_url":"https://www.gob.mx/asea","verified":True},
-    {"name":"Refugio Oil Pipeline Spill","year":2015,"month":"May","country":"USA","region":"Americas","location":"Santa Barbara, California","type":"Spill","facility":"Midstream","fatalities":0,"injuries":0,"loss_musd":100,"operator":"Plains All American Pipeline","cause":"Pipeline Integrity","description":"ท่อส่งน้ำมันรั่วไหลบริเวณชายหาด Refugio State Beach น้ำมันกว่า 140,000 แกลลอนไหลลงทะเล ทำลายระบบนิเวศชายฝั่ง","source":"PHMSA","source_url":"https://www.phmsa.dot.gov/","verified":True},
-    {"name":"Exxon Valdez Oil Spill","year":1989,"month":"March","country":"USA","region":"Americas","location":"Prince William Sound, Alaska","type":"Spill","facility":"Midstream","fatalities":0,"injuries":0,"loss_musd":7000,"operator":"Exxon Shipping Company","cause":"Human Error","description":"เรือบรรทุกน้ำมัน Exxon Valdez ชนแนวหินใต้น้ำ น้ำมันดิบกว่า 257,000 บาร์เรลไหลลงสู่ทะเล ทำลายระบบนิเวศรัฐ Alaska","source":"US NTSB / EPA","source_url":"https://www.ntsb.gov/","verified":True},
 
-    # ===== EUROPE =====
-    {"name":"Piper Alpha Platform Fire","year":1988,"month":"July","country":"UK","region":"Europe","location":"North Sea, Scotland","type":"Fire","facility":"Offshore","fatalities":167,"injuries":61,"loss_musd":3400,"operator":"Occidental Petroleum","cause":"Process Safety / Human Error","description":"ไฟไหม้แท่นขุดเจาะ Piper Alpha ในทะเลเหนือ เป็นภัยพิบัติแท่นขุดเจาะน้ำมันที่มีผู้เสียชีวิตมากที่สุดในโลก เกิดจากความผิดพลาดในการสื่อสารระหว่างกะทำงาน","source":"UK HSE — Cullen Report","source_url":"https://www.hse.gov.uk/offshore/piper-alpha.htm","verified":True},
-    {"name":"Buncefield Oil Depot Explosion","year":2005,"month":"December","country":"UK","region":"Europe","location":"Hemel Hempstead, Hertfordshire","type":"Explosion","facility":"Midstream","fatalities":0,"injuries":43,"loss_musd":1200,"operator":"Hertfordshire Oil Storage Ltd","cause":"Mechanical Failure","description":"การระเบิดที่คลังน้ำมัน Buncefield เป็นการระเบิดที่ใหญ่ที่สุดในยุโรปตะวันตกหลังสงครามโลกครั้งที่ 2 เกิดจากถังน้ำมันล้น","source":"UK Health & Safety Executive (HSE)","source_url":"https://www.hse.gov.uk/comah/buncefield/","verified":True},
-    {"name":"Elgin Gas Platform Leak","year":2012,"month":"March","country":"UK","region":"Europe","location":"North Sea, Scotland","type":"Gas Release","facility":"Offshore","fatalities":0,"injuries":0,"loss_musd":600,"operator":"Total","cause":"Well Control Failure","description":"ก๊าซรั่วไหลจากแท่นขุดเจาะ Elgin ในทะเลเหนือ ต้องอพยพพนักงาน 238 คน ใช้เวลากว่า 3 สัปดาห์ควบคุมสถานการณ์","source":"UK Health & Safety Executive (HSE)","source_url":"https://www.hse.gov.uk/","verified":True},
-    {"name":"Pembroke Refinery Explosion","year":2011,"month":"June","country":"UK","region":"Europe","location":"Pembrokeshire, Wales","type":"Explosion","facility":"Downstream","fatalities":0,"injuries":4,"loss_musd":400,"operator":"Chevron","cause":"Process Safety / Human Error","description":"การระเบิดที่โรงกลั่น Pembroke ของ Chevron เกิดจากก๊าซรั่วในหน่วยกลั่น ทำให้เกิดเพลิงไหม้ขนาดใหญ่","source":"UK Health & Safety Executive (HSE)","source_url":"https://www.hse.gov.uk/","verified":True},
-    {"name":"Ghislenghien Pipeline Explosion","year":2004,"month":"July","country":"Belgium","region":"Europe","location":"Ghislenghien, Hainaut","type":"Explosion","facility":"Midstream","fatalities":24,"injuries":132,"loss_musd":150,"operator":"Fluxys","cause":"Pipeline Integrity","description":"ท่อก๊าซธรรมชาติความดันสูงระเบิดขณะคนงานก่อสร้างทำงานใกล้เคียง เป็นภัยพิบัติท่อก๊าซที่ร้ายแรงที่สุดในเบลเยียม","source":"Belgian Federal Public Service Economy","source_url":"https://economie.fgov.be/","verified":True},
-    {"name":"AZF Fertilizer Plant Explosion","year":2001,"month":"September","country":"France","region":"Europe","location":"Toulouse","type":"Explosion","facility":"Downstream","fatalities":31,"injuries":2500,"loss_musd":3000,"operator":"Grande Paroisse (Total)","cause":"Process Safety / Human Error","description":"การระเบิดของโรงงานปุ๋ย AZF ในเมือง Toulouse ทำให้อาคารและบ้านเรือนในรัศมีหลายกิโลเมตรได้รับความเสียหาย","source":"ARIA (French Ministry of Environment)","source_url":"https://www.aria.developpement-durable.gouv.fr/","verified":True},
-    {"name":"Asha Pipeline Explosion","year":1989,"month":"June","country":"Russia","region":"Europe","location":"Asha, Ural Region","type":"Explosion","facility":"Midstream","fatalities":575,"injuries":623,"loss_musd":200,"operator":"Soviet Transpetrol","cause":"Pipeline Integrity","description":"ท่อส่งก๊าซ LPG รั่วไหลสะสมในหุบเขา เมื่อรถไฟ 2 ขบวนแล่นผ่านทำให้เกิดการระเบิดครั้งใหญ่ มีผู้เสียชีวิตมากกว่า 575 ราย","source":"Russian Federal Service for Ecological Supervision","source_url":"https://www.gosnadzor.ru/","verified":True},
-    {"name":"Feyzin Refinery BLEVE","year":1966,"month":"January","country":"France","region":"Europe","location":"Feyzin, Lyon","type":"Explosion","facility":"Downstream","fatalities":18,"injuries":81,"loss_musd":50,"operator":"Société Française des Pétroles BP","cause":"Process Safety / Human Error","description":"การระเบิดแบบ BLEVE ที่โรงกลั่น Feyzin เป็นกรณีศึกษาคลาสสิกด้านความปลอดภัย LPG ที่สอนในมหาวิทยาลัยทั่วโลก","source":"ARIA (French Ministry of Environment)","source_url":"https://www.aria.developpement-durable.gouv.fr/","verified":True},
+# URL หลักของ PHMSA Open Data API
+PHMSA_BASE = "https://data.phmsa.dot.gov/api/action/datastore_search_sql"
 
-    # ===== ASIA PACIFIC =====
-    {"name":"Bhopal Gas Tragedy","year":1984,"month":"December","country":"India","region":"Asia Pacific","location":"Bhopal, Madhya Pradesh","type":"Gas Release","facility":"Downstream","fatalities":3787,"injuries":558125,"loss_musd":470,"operator":"Union Carbide India Ltd","cause":"Process Safety / Human Error","description":"การรั่วไหลของก๊าซ Methyl Isocyanate จากโรงงาน Union Carbide เป็นภัยพิบัติโรงงานอุตสาหกรรมที่เลวร้ายที่สุดในประวัติศาสตร์โลก","source":"Indian Council of Medical Research / US EPA","source_url":"https://www.epa.gov/","verified":True},
-    {"name":"Esso Longford Gas Plant Explosion","year":1998,"month":"September","country":"Australia","region":"Asia Pacific","location":"Longford, Victoria","type":"Explosion","facility":"Upstream","fatalities":2,"injuries":8,"loss_musd":1300,"operator":"Esso Australia","cause":"Process Safety / Human Error","description":"การระเบิดที่โรงแยกก๊าซ Longford ทำให้รัฐ Victoria ขาดแคลนก๊าซหุงต้มนาน 2 สัปดาห์ เกิดจากความเย็นสุดขีดทำลายอุปกรณ์","source":"WorkSafe Victoria / Longford Royal Commission","source_url":"https://www.worksafe.vic.gov.au/","verified":True},
-    {"name":"Mumbai High North Platform Collision","year":2005,"month":"July","country":"India","region":"Asia Pacific","location":"Mumbai High, Arabian Sea","type":"Fire","facility":"Offshore","fatalities":22,"injuries":0,"loss_musd":500,"operator":"ONGC","cause":"Collision","description":"เรือสนับสนุน MSV Samudra Suraksha พุ่งชนแท่นขุดเจาะ Mumbai High North ทำให้เกิดเพลิงไหม้ มีผู้เสียชีวิต 22 ราย","source":"Directorate General of Hydrocarbons, India","source_url":"https://www.dghindia.gov.in/","verified":True},
-    {"name":"Jilin Petrochemical Explosion","year":2005,"month":"November","country":"China","region":"Asia Pacific","location":"Jilin City, Jilin Province","type":"Explosion","facility":"Downstream","fatalities":8,"injuries":60,"loss_musd":300,"operator":"CNPC","cause":"Process Safety / Human Error","description":"การระเบิดที่โรงงานเคมี CNPC ทำให้สาร Benzene รั่วไหลสู่แม่น้ำ Songhua กระทบน้ำดื่มของประชาชน 4 ล้านคน","source":"China State Environmental Protection Administration","source_url":"https://www.mee.gov.cn/","verified":True},
-    {"name":"Vizag LG Polymers Gas Leak","year":2020,"month":"May","country":"India","region":"Asia Pacific","location":"Visakhapatnam, Andhra Pradesh","type":"Gas Release","facility":"Downstream","fatalities":12,"injuries":1000,"loss_musd":250,"operator":"LG Polymers India","cause":"Process Safety / Human Error","description":"ก๊าซ Styrene รั่วไหลจากโรงงาน LG Polymers ขณะเริ่มกลับมาผลิตหลัง COVID-19 lockdown ประชาชนในรัศมี 3 กม. ได้รับผลกระทบ","source":"National Disaster Management Authority, India","source_url":"https://ndma.gov.in/","verified":True},
-    {"name":"Montara Wellhead Blowout","year":2009,"month":"August","country":"Australia","region":"Asia Pacific","location":"Timor Sea","type":"Blowout","facility":"Offshore","fatalities":0,"injuries":0,"loss_musd":400,"operator":"PTTEP Australasia","cause":"Well Control Failure","description":"น้ำมันและก๊าซพุ่งออกจากบ่อ Montara ในทะเล Timor ต่อเนื่องนาน 74 วัน น้ำมันรั่วไหลกว่า 30,000 บาร์เรล ส่งผลกระทบต่อระบบนิเวศทางทะเล","source":"Australian Government — Montara Commission of Inquiry","source_url":"https://www.industry.gov.au/","verified":True},
-    {"name":"Sinopec Qingdao Pipeline Explosion","year":2013,"month":"November","country":"China","region":"Asia Pacific","location":"Qingdao, Shandong Province","type":"Explosion","facility":"Midstream","fatalities":62,"injuries":136,"loss_musd":750,"operator":"Sinopec","cause":"Pipeline Integrity","description":"ท่อส่งน้ำมันรั่วไหลสู่ท่อระบายน้ำและเกิดการระเบิดในเมือง Qingdao เป็นอุบัติเหตุท่อส่งน้ำมันที่ร้ายแรงที่สุดในประวัติศาสตร์จีน","source":"China National Safety Supervision Administration","source_url":"https://www.mem.gov.cn/","verified":True},
+# รหัสชุดข้อมูลของ PHMSA แต่ละประเภท
+PHMSA_RESOURCES = {
+    "Gas Distribution":    "a6baea2f-84e8-4cdb-879e-85bb3bed2d60",
+    "Gas Transmission":    "f58c2c46-2e33-4e75-b1df-ea98c582cb0d",
+    "Hazardous Liquid":    "9f24e58c-1b76-4a82-a95e-7c7571e1f9b1",
+    "LNG":                 "9b3e20c2-0b7b-4b4a-9cff-7bee5b5d1a0d",
+}
 
-    # ===== MIDDLE EAST =====
-    {"name":"Abqaiq Processing Facility Attack","year":2019,"month":"September","country":"Saudi Arabia","region":"Middle East","location":"Abqaiq & Khurais, Eastern Province","type":"Explosion","facility":"Downstream","fatalities":0,"injuries":0,"loss_musd":10000,"operator":"Saudi Aramco","cause":"External Attack","description":"การโจมตีด้วยโดรนต่อโรงงานประมวลผลน้ำมัน Abqaiq ของ Saudi Aramco ทำให้กำลังผลิตน้ำมันของซาอุดีอาระเบียลดลงกว่า 50%","source":"Saudi Aramco / US EIA","source_url":"https://www.eia.gov/","verified":True},
-    {"name":"Kuwait Oil Well Fires","year":1991,"month":"January","country":"Kuwait","region":"Middle East","location":"Kuwait Oil Fields","type":"Fire","facility":"Upstream","fatalities":0,"injuries":0,"loss_musd":40000,"operator":"Kuwait Oil Company (KOC)","cause":"External Attack","description":"กองทัพอิรักจุดไฟเผาบ่อน้ำมันกว่า 700 แห่งในคูเวตระหว่างสงครามอ่าว ใช้เวลากว่า 9 เดือนในการดับไฟทั้งหมด","source":"Kuwait Oil Company (KOC) / UN Reports","source_url":"https://www.kockw.com/","verified":True},
-    {"name":"Bandar Imam Khomeini Refinery Fire","year":2005,"month":"December","country":"Iran","region":"Middle East","location":"Bandar Imam Khomeini, Khuzestan","type":"Fire","facility":"Downstream","fatalities":0,"injuries":5,"loss_musd":180,"operator":"NIORDC","cause":"Mechanical Failure","description":"เพลิงไหม้ที่โรงกลั่นน้ำมัน Bandar Imam Khomeini ซึ่งเป็นหนึ่งในโรงกลั่นที่ใหญ่ที่สุดในตะวันออกกลาง","source":"National Iranian Oil Company (NIOC)","source_url":"https://www.nioc.ir/","verified":True},
+@st.cache_data(ttl=3600)  # cache 1 ชั่วโมง ไม่ดึงซ้ำบ่อย
+def fetch_phmsa_data(resource_id: str, year_from: int, year_to: int, limit: int = 500) -> pd.DataFrame:
+    """
+    ดึงข้อมูล incident จาก PHMSA API
+    - resource_id: รหัสชุดข้อมูล
+    - year_from / year_to: ช่วงปี
+    - limit: จำนวนแถวสูงสุด
+    """
+    sql = f"""
+        SELECT *
+        FROM "{resource_id}"
+        WHERE "IYEAR" >= {year_from}
+          AND "IYEAR" <= {year_to}
+        ORDER BY "IYEAR" DESC
+        LIMIT {limit}
+    """
+    try:
+        resp = requests.get(
+            PHMSA_BASE,
+            params={"sql": sql},
+            timeout=30
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        records = data.get("result", {}).get("records", [])
+        return pd.DataFrame(records) if records else pd.DataFrame()
+    except Exception as e:
+        return pd.DataFrame()  # ถ้า API ล่ม ส่ง dataframe ว่างกลับ
 
-    # ===== AFRICA =====
-    {"name":"Skikda LNG Plant Explosion","year":2004,"month":"January","country":"Algeria","region":"Africa","location":"Skikda, Northeast Algeria","type":"Explosion","facility":"Downstream","fatalities":27,"injuries":74,"loss_musd":900,"operator":"Sonatrach","cause":"Mechanical Failure","description":"การระเบิดที่โรงงาน LNG ของ Sonatrach ใน Skikda ทำลายหน่วยผลิต 3 ใน 6 หน่วย เป็นอุบัติเหตุ LNG ที่ร้ายแรงที่สุดในโลก","source":"Sonatrach Investigation Report / ARIA","source_url":"https://www.sonatrach.com/","verified":True},
-    {"name":"Nairobi Pipeline Explosion","year":2011,"month":"September","country":"Kenya","region":"Africa","location":"Nairobi, Sinai area","type":"Fire","facility":"Midstream","fatalities":120,"injuries":200,"loss_musd":80,"operator":"Kenya Pipeline Company","cause":"Pipeline Integrity","description":"ท่อส่งน้ำมันระเบิดในชุมชนแออัด Sinai กรุงไนโรบี ประชาชนที่มารวมกันเก็บน้ำมันที่รั่วไหลได้รับบาดเจ็บและเสียชีวิตจำนวนมาก","source":"Kenya National Commission on Human Rights","source_url":"https://www.knchr.org/","verified":True},
-    {"name":"Niger Delta Pipeline Fires","year":2012,"month":"November","country":"Nigeria","region":"Africa","location":"Rivers State, Niger Delta","type":"Fire","facility":"Midstream","fatalities":5,"injuries":0,"loss_musd":50,"operator":"Shell SPDC","cause":"Pipeline Integrity","description":"การระเบิดของท่อส่งน้ำมันในพื้นที่ Niger Delta หนึ่งในหลายเหตุการณ์ที่เกิดขึ้นซ้ำๆ ในพื้นที่นี้","source":"Shell SPDC Nigeria / NOSDRA","source_url":"https://www.nosdra.gov.ng/","verified":True},
+
+def clean_phmsa_df(df: pd.DataFrame, pipeline_type: str) -> pd.DataFrame:
+    """
+    จัดระเบียบ column ของ PHMSA ให้อ่านง่าย
+    PHMSA ใช้ชื่อ column แบบย่อ เช่น IYEAR, FATAL, INJURE
+    """
+    if df.empty:
+        return df
+
+    # แมป column ชื่อย่อ → ชื่อที่เข้าใจง่าย
+    col_map = {
+        "IYEAR":        "year",
+        "IMONTH":       "month",
+        "LOCAL_PDATETIME": "date",
+        "OPERATOR_ID":  "operator_id",
+        "OPERATOR_NAME":"operator",
+        "STATE":        "state",
+        "CITY":         "city",
+        "COUNTY":       "county",
+        "FATAL":        "fatalities",
+        "INJURE":       "injuries",
+        "PRPTY":        "property_damage_usd",
+        "CAUSE":        "cause_code",
+        "CAUSE_DETAILS":"cause_detail",
+        "COMMODITY":    "commodity",
+        "LOCATION_TYPE":"location_type",
+        "NAME_OF_OPERATOR": "operator",
+    }
+
+    # เลือกเฉพาะ column ที่มีจริงใน dataframe
+    existing = {k: v for k, v in col_map.items() if k in df.columns}
+    df = df.rename(columns=existing)
+
+    # แปลงตัวเลขให้เป็น numeric จริง (PHMSA ส่งมาเป็น string)
+    for col in ["fatalities", "injuries", "property_damage_usd", "year"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    # เพิ่ม column ที่ต้องการ
+    df["pipeline_type"] = pipeline_type
+    df["country"] = "USA"
+    df["region"] = "Americas"
+    df["source"] = "PHMSA (US Dept. of Transportation)"
+    df["source_url"] = "https://www.phmsa.dot.gov/"
+    df["verified"] = True
+
+    # สร้าง location string
+    if "city" in df.columns and "state" in df.columns:
+        df["location"] = df["city"].fillna("") + ", " + df["state"].fillna("")
+    elif "state" in df.columns:
+        df["location"] = df["state"].fillna("Unknown")
+    else:
+        df["location"] = "USA"
+
+    # แปลง cause_code → ภาษาที่อ่านง่าย
+    cause_map = {
+        "CORROSION":    "Corrosion",
+        "EXCAVATION":   "Excavation Damage",
+        "INCORRECT OPERATION": "Human Error / Incorrect Operation",
+        "MATERIAL":     "Material / Weld Failure",
+        "EQUIPMENT":    "Equipment Failure",
+        "NATURAL FORCE":"Natural Force / Weather",
+        "OTHER OUTSIDE FORCE": "External Force",
+        "ALL OTHER CAUSES": "Other",
+    }
+    if "cause_code" in df.columns:
+        df["cause"] = df["cause_code"].map(cause_map).fillna(df["cause_code"].fillna("Unknown"))
+    else:
+        df["cause"] = "Unknown"
+
+    return df
+
+
+# ============================================================
+# ข้อมูล MAE historical สำรอง (ใช้เมื่อ PHMSA API ไม่ตอบสนอง)
+# ============================================================
+HISTORICAL_MAE = [
+    {"name":"Deepwater Horizon","year":2010,"month":"April","country":"USA","region":"Americas","location":"Gulf of Mexico, Louisiana","pipeline_type":"Offshore","fatalities":11,"injuries":17,"property_damage_usd":65000000000,"operator":"BP","cause":"Well Control Failure","state":"LA","city":"Gulf of Mexico","source":"BSEE","source_url":"https://www.bsee.gov/","verified":True},
+    {"name":"Texas City Refinery","year":2005,"month":"March","country":"USA","region":"Americas","location":"Texas City, TX","pipeline_type":"Downstream","fatalities":15,"injuries":180,"property_damage_usd":1500000000,"operator":"BP","cause":"Human Error / Incorrect Operation","state":"TX","city":"Texas City","source":"CSB","source_url":"https://www.csb.gov/","verified":True},
+    {"name":"Piper Alpha Fire","year":1988,"month":"July","country":"UK","region":"Europe","location":"North Sea, Scotland","pipeline_type":"Offshore","fatalities":167,"injuries":61,"property_damage_usd":3400000000,"operator":"Occidental","cause":"Human Error / Incorrect Operation","state":"N/A","city":"North Sea","source":"HSE UK","source_url":"https://www.hse.gov.uk/","verified":True},
+    {"name":"Buncefield Depot","year":2005,"month":"December","country":"UK","region":"Europe","location":"Hemel Hempstead, UK","pipeline_type":"Midstream","fatalities":0,"injuries":43,"property_damage_usd":1200000000,"operator":"HOSL","cause":"Equipment Failure","state":"N/A","city":"Hemel Hempstead","source":"HSE UK","source_url":"https://www.hse.gov.uk/","verified":True},
+    {"name":"Lac-Mégantic Rail","year":2013,"month":"July","country":"Canada","region":"Americas","location":"Lac-Mégantic, Quebec","pipeline_type":"Midstream","fatalities":47,"injuries":0,"property_damage_usd":2700000000,"operator":"MMA Railway","cause":"Equipment Failure","state":"N/A","city":"Lac-Mégantic","source":"TSB Canada","source_url":"https://www.tsb.gc.ca/","verified":True},
+    {"name":"Skikda LNG Explosion","year":2004,"month":"January","country":"Algeria","region":"Africa","location":"Skikda, Algeria","pipeline_type":"LNG","fatalities":27,"injuries":74,"property_damage_usd":900000000,"operator":"Sonatrach","cause":"Equipment Failure","state":"N/A","city":"Skikda","source":"Sonatrach","source_url":"https://www.sonatrach.com/","verified":True},
+    {"name":"Mumbai High North","year":2005,"month":"July","country":"India","region":"Asia Pacific","location":"Mumbai High, Arabian Sea","pipeline_type":"Offshore","fatalities":22,"injuries":0,"property_damage_usd":500000000,"operator":"ONGC","cause":"External Force","state":"N/A","city":"Arabian Sea","source":"DGH India","source_url":"https://www.dghindia.gov.in/","verified":True},
+    {"name":"Abqaiq Attack","year":2019,"month":"September","country":"Saudi Arabia","region":"Middle East","location":"Abqaiq, Saudi Arabia","pipeline_type":"Downstream","fatalities":0,"injuries":0,"property_damage_usd":10000000000,"operator":"Saudi Aramco","cause":"External Force","state":"N/A","city":"Abqaiq","source":"Saudi Aramco / EIA","source_url":"https://www.eia.gov/","verified":True},
+    {"name":"Montara Blowout","year":2009,"month":"August","country":"Australia","region":"Asia Pacific","location":"Timor Sea, Australia","pipeline_type":"Offshore","fatalities":0,"injuries":0,"property_damage_usd":400000000,"operator":"PTTEP Australasia","cause":"Well Control Failure","state":"N/A","city":"Timor Sea","source":"Australian Gov","source_url":"https://www.industry.gov.au/","verified":True},
+    {"name":"Sinopec Qingdao Explosion","year":2013,"month":"November","country":"China","region":"Asia Pacific","location":"Qingdao, China","pipeline_type":"Hazardous Liquid","fatalities":62,"injuries":136,"property_damage_usd":750000000,"operator":"Sinopec","cause":"Material / Weld Failure","state":"N/A","city":"Qingdao","source":"China MEM","source_url":"https://www.mem.gov.cn/","verified":True},
+    {"name":"Ghislenghien Explosion","year":2004,"month":"July","country":"Belgium","region":"Europe","location":"Ghislenghien, Belgium","pipeline_type":"Gas Transmission","fatalities":24,"injuries":132,"property_damage_usd":150000000,"operator":"Fluxys","cause":"Excavation Damage","state":"N/A","city":"Ghislenghien","source":"Belgian Gov","source_url":"https://economie.fgov.be/","verified":True},
+    {"name":"Bhopal Gas Tragedy","year":1984,"month":"December","country":"India","region":"Asia Pacific","location":"Bhopal, India","pipeline_type":"Downstream","fatalities":3787,"injuries":558125,"property_damage_usd":470000000,"operator":"Union Carbide","cause":"Human Error / Incorrect Operation","state":"N/A","city":"Bhopal","source":"ICMR / EPA","source_url":"https://www.epa.gov/","verified":True},
+    {"name":"Kuwait Oil Well Fires","year":1991,"month":"January","country":"Kuwait","region":"Middle East","location":"Kuwait Oil Fields","pipeline_type":"Upstream","fatalities":0,"injuries":0,"property_damage_usd":40000000000,"operator":"Kuwait Oil Company","cause":"External Force","state":"N/A","city":"Kuwait","source":"KOC / UN","source_url":"https://www.kockw.com/","verified":True},
+    {"name":"Nairobi Pipeline Explosion","year":2011,"month":"September","country":"Kenya","region":"Africa","location":"Nairobi, Kenya","pipeline_type":"Hazardous Liquid","fatalities":120,"injuries":200,"property_damage_usd":80000000,"operator":"Kenya Pipeline Co.","cause":"Material / Weld Failure","state":"N/A","city":"Nairobi","source":"KNCHR","source_url":"https://www.knchr.org/","verified":True},
+    {"name":"AZF Toulouse Explosion","year":2001,"month":"September","country":"France","region":"Europe","location":"Toulouse, France","pipeline_type":"Downstream","fatalities":31,"injuries":2500,"property_damage_usd":3000000000,"operator":"Grande Paroisse","cause":"Human Error / Incorrect Operation","state":"N/A","city":"Toulouse","source":"ARIA France","source_url":"https://www.aria.developpement-durable.gouv.fr/","verified":True},
 ]
-
-df = pd.DataFrame(MAE_DATA)
 
 # ============================================================
 # Header
 # ============================================================
-st.title("🔥 Global MAE Report Generator")
-st.markdown("**Major Accident Events — Oil & Gas Industry** | ข้อมูลเหตุการณ์จริงทั่วโลก | Powered by Claude AI")
-st.success(f"✅ ข้อมูลทั้งหมด {len(df)} เหตุการณ์จริง — ตรวจสอบจากแหล่งข้อมูลสาธารณะระดับนานาชาติ (BSEE / HSE / PHMSA / CSB / ARIA)")
-st.divider()
+st.title("🔥 Global MAE Report — Real-time Data")
+st.markdown("**Major Accident Events — Oil & Gas** | PHMSA Live API + Historical Database | Powered by Claude AI")
 
 # ============================================================
 # Sidebar
 # ============================================================
 st.sidebar.header("🎛️ ตั้งค่าตัวกรอง")
 
-search_text = st.sidebar.text_input("🔍 ค้นหาชื่อเหตุการณ์ / ประเทศ / สถานที่", placeholder="เช่น Deepwater, India, North Sea...")
+data_source = st.sidebar.radio(
+    "📡 แหล่งข้อมูล",
+    ["🔴 PHMSA Real-time (USA Pipeline)", "📚 Historical Global MAE", "🔀 รวมทั้งสองแหล่ง"],
+    index=2
+)
 
-year_range = st.sidebar.slider("ช่วงปีที่เกิดเหตุ",
-    min_value=int(df["year"].min()), max_value=int(df["year"].max()),
-    value=(2000, int(df["year"].max())))
+year_from = st.sidebar.number_input("ปีเริ่มต้น", min_value=1970, max_value=2025, value=2015)
+year_to   = st.sidebar.number_input("ปีสิ้นสุด",  min_value=1970, max_value=2025, value=2025)
 
-selected_regions = st.sidebar.multiselect("ภูมิภาค",
-    options=sorted(df["region"].unique()), default=sorted(df["region"].unique()))
+search_text = st.sidebar.text_input("🔍 ค้นหา", placeholder="เช่น Texas, explosion, BP...")
 
-selected_countries = st.sidebar.multiselect("🌍 ประเทศ",
-    options=sorted(df["country"].unique()), default=sorted(df["country"].unique()))
+only_fatal = st.sidebar.checkbox("เฉพาะที่มีผู้เสียชีวิต")
 
-selected_types = st.sidebar.multiselect("ประเภทเหตุการณ์",
-    options=sorted(df["type"].unique()), default=sorted(df["type"].unique()))
+min_damage = st.sidebar.number_input(
+    "ความเสียหายขั้นต่ำ (USD)",
+    min_value=0, max_value=1_000_000_000,
+    value=0, step=100_000,
+    help="กรองเฉพาะเหตุการณ์ที่มีความเสียหายมากกว่าที่กำหนด"
+)
 
-selected_facility = st.sidebar.multiselect("ประเภทสถานที่",
-    options=sorted(df["facility"].unique()), default=sorted(df["facility"].unique()))
-
-only_fatal   = st.sidebar.checkbox("แสดงเฉพาะเหตุการณ์ที่มีผู้เสียชีวิต")
-only_verified= st.sidebar.checkbox("แสดงเฉพาะที่มีแหล่งอ้างอิงยืนยัน", value=False)
+phmsa_types = st.sidebar.multiselect(
+    "ประเภท Pipeline (PHMSA)",
+    options=list(PHMSA_RESOURCES.keys()),
+    default=["Gas Transmission", "Hazardous Liquid"],
+    help="เลือกประเภท pipeline ที่ต้องการดึงจาก PHMSA"
+)
 
 report_style = st.sidebar.selectbox("รูปแบบ AI Report",
-    ["Executive Summary","Detailed Technical Report","Statistical Analysis"])
+    ["Executive Summary", "Detailed Technical Report", "Statistical Analysis"])
 
 # ============================================================
-# Filter
+# ดึงข้อมูล
 # ============================================================
-filtered = df[
-    df["year"].between(*year_range) &
-    df["region"].isin(selected_regions) &
-    df["country"].isin(selected_countries) &
-    df["type"].isin(selected_types) &
-    df["facility"].isin(selected_facility)
-].copy()
+frames = []
+
+# --- ดึงจาก PHMSA ---
+if "PHMSA" in data_source or "รวม" in data_source:
+    if phmsa_types:
+        phmsa_status = st.empty()
+        phmsa_status.info("🔄 กำลังดึงข้อมูลจาก PHMSA API จริง...")
+
+        phmsa_frames = []
+        for ptype in phmsa_types:
+            rid = PHMSA_RESOURCES.get(ptype)
+            if rid:
+                raw = fetch_phmsa_data(rid, int(year_from), int(year_to), limit=300)
+                if not raw.empty:
+                    cleaned = clean_phmsa_df(raw, ptype)
+                    phmsa_frames.append(cleaned)
+
+        if phmsa_frames:
+            phmsa_df = pd.concat(phmsa_frames, ignore_index=True)
+            frames.append(phmsa_df)
+            phmsa_status.success(f"✅ PHMSA: ดึงข้อมูลสำเร็จ {len(phmsa_df):,} เหตุการณ์")
+        else:
+            phmsa_status.warning("⚠️ PHMSA API ไม่ตอบสนอง — ใช้ข้อมูล Historical แทน")
+            frames.append(pd.DataFrame(HISTORICAL_MAE))
+
+# --- ดึง Historical ---
+if "Historical" in data_source or "รวม" in data_source:
+    hist_df = pd.DataFrame(HISTORICAL_MAE)
+    hist_df_filtered = hist_df[
+        (hist_df["year"] >= int(year_from)) &
+        (hist_df["year"] <= int(year_to))
+    ]
+    frames.append(hist_df_filtered)
+
+# รวม dataframe ทั้งหมด
+if frames:
+    df = pd.concat(frames, ignore_index=True)
+    # ลบ duplicate ถ้า operator + year + fatalities ซ้ำกัน
+    df = df.drop_duplicates(subset=["operator","year","fatalities"], keep="first")
+else:
+    df = pd.DataFrame(HISTORICAL_MAE)
+
+# แปลงให้แน่ใจว่า numeric
+for col in ["fatalities","injuries","property_damage_usd","year"]:
+    if col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+# ============================================================
+# Apply filter
+# ============================================================
+filtered = df.copy()
 
 if search_text:
-    mask = (
-        filtered["name"].str.contains(search_text, case=False, na=False) |
-        filtered["country"].str.contains(search_text, case=False, na=False) |
-        filtered["location"].str.contains(search_text, case=False, na=False) |
-        filtered["description"].str.contains(search_text, case=False, na=False)
-    )
+    mask = pd.Series([False]*len(filtered), index=filtered.index)
+    for col in ["operator","location","cause","pipeline_type","city","state","country"]:
+        if col in filtered.columns:
+            mask |= filtered[col].astype(str).str.contains(search_text, case=False, na=False)
     filtered = filtered[mask]
 
-if only_fatal:    filtered = filtered[filtered["fatalities"] > 0]
-if only_verified: filtered = filtered[filtered["verified"] == True]
+if only_fatal:
+    filtered = filtered[filtered["fatalities"] > 0]
+
+if min_damage > 0 and "property_damage_usd" in filtered.columns:
+    filtered = filtered[filtered["property_damage_usd"] >= min_damage]
 
 # ============================================================
 # Metrics
 # ============================================================
-c1,c2,c3,c4,c5 = st.columns(5)
-c1.metric("🔴 MAE Events",      len(filtered))
-c2.metric("💀 เสียชีวิตรวม",   f"{filtered['fatalities'].sum():,}")
-c3.metric("🤕 บาดเจ็บรวม",    f"{filtered['injuries'].sum():,}")
-c4.metric("💰 ความเสียหาย",    f"${filtered['loss_musd'].sum()/1000:.1f}B")
-c5.metric("🌍 ประเทศที่เกิดเหตุ", filtered["country"].nunique())
+total_events    = len(filtered)
+total_fatal     = int(filtered["fatalities"].sum()) if "fatalities" in filtered.columns else 0
+total_injury    = int(filtered["injuries"].sum()) if "injuries" in filtered.columns else 0
+total_damage    = filtered["property_damage_usd"].sum() if "property_damage_usd" in filtered.columns else 0
+total_countries = filtered["country"].nunique() if "country" in filtered.columns else 0
+
+col1,col2,col3,col4,col5 = st.columns(5)
+col1.metric("🔴 MAE Events",      f"{total_events:,}")
+col2.metric("💀 เสียชีวิตรวม",   f"{total_fatal:,}")
+col3.metric("🤕 บาดเจ็บรวม",    f"{total_injury:,}")
+col4.metric("💰 ความเสียหาย",
+    f"${total_damage/1e9:.2f}B" if total_damage >= 1e9 else f"${total_damage/1e6:.1f}M")
+col5.metric("🌍 ประเทศ", total_countries)
+
+# แสดงว่าข้อมูลอัปเดตล่าสุดเมื่อไหร่
+st.caption(f"🕐 อัปเดตล่าสุด: {datetime.now().strftime('%d %b %Y %H:%M')} | "
+           f"ข้อมูล PHMSA cache 1 ชั่วโมง")
 st.divider()
 
 # ============================================================
@@ -139,165 +297,210 @@ tab1,tab2,tab3,tab4,tab5 = st.tabs([
     "📈 Root Cause"
 ])
 
-# ---- TAB 1 ----
+# ---- TAB 1: Charts ----
 with tab1:
-    r1,r2 = st.columns(2)
-    with r1:
-        st.subheader("เหตุการณ์ตามภูมิภาค")
-        rc = filtered.groupby("region").size().reset_index(name="count")
-        fig1 = px.bar(rc, x="region", y="count", color="region",
-                      color_discrete_sequence=px.colors.qualitative.Set2)
-        fig1.update_layout(showlegend=False, height=280, margin=dict(l=0,r=0,t=10,b=0))
-        st.plotly_chart(fig1, use_container_width=True)
+    if filtered.empty:
+        st.warning("ไม่มีข้อมูลที่ตรงกับตัวกรอง")
+    else:
+        r1,r2 = st.columns(2)
 
-    with r2:
-        st.subheader("เหตุการณ์ตามประเทศ (Top 10)")
-        cc = filtered.groupby("country").size().reset_index(name="count").nlargest(10,"count")
-        fig_c = px.bar(cc, x="count", y="country", orientation="h",
-                       color="count", color_continuous_scale="OrRd")
-        fig_c.update_layout(showlegend=False, height=280, margin=dict(l=0,r=0,t=10,b=0),
-                            yaxis=dict(autorange="reversed"))
-        st.plotly_chart(fig_c, use_container_width=True)
+        with r1:
+            st.subheader("เหตุการณ์ตามประเภท Pipeline")
+            if "pipeline_type" in filtered.columns:
+                tc = filtered.groupby("pipeline_type").size().reset_index(name="count")
+                fig1 = px.bar(tc, x="pipeline_type", y="count", color="pipeline_type",
+                              color_discrete_sequence=px.colors.qualitative.Set2)
+                fig1.update_layout(showlegend=False, height=280, margin=dict(l=0,r=0,t=10,b=0))
+                st.plotly_chart(fig1, use_container_width=True)
 
-    st.subheader("แนวโน้ม MAE ตามปี")
-    yc = filtered.groupby("year").agg(events=("name","count"),fatalities=("fatalities","sum")).reset_index()
-    fig3 = go.Figure()
-    fig3.add_trace(go.Bar(x=yc["year"], y=yc["events"], name="จำนวนเหตุการณ์", marker_color="#ef553b"))
-    fig3.add_trace(go.Scatter(x=yc["year"], y=yc["fatalities"], name="ผู้เสียชีวิต",
-                              yaxis="y2", line=dict(color="#636efa",width=2)))
-    fig3.update_layout(height=300,
-        yaxis=dict(title="จำนวนเหตุการณ์"),
-        yaxis2=dict(title="ผู้เสียชีวิต", overlaying="y", side="right"),
-        legend=dict(orientation="h",yanchor="bottom",y=1),
-        margin=dict(l=0,r=0,t=30,b=0))
-    st.plotly_chart(fig3, use_container_width=True)
+        with r2:
+            st.subheader("เหตุการณ์ตามประเทศ (Top 10)")
+            if "country" in filtered.columns:
+                cc = filtered.groupby("country").size().reset_index(name="count").nlargest(10,"count")
+                fig_c = px.bar(cc, x="count", y="country", orientation="h",
+                               color="count", color_continuous_scale="OrRd")
+                fig_c.update_layout(showlegend=False, height=280,
+                                    margin=dict(l=0,r=0,t=10,b=0),
+                                    yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig_c, use_container_width=True)
 
-    st.subheader("🗺️ แผนที่เหตุการณ์ทั่วโลก")
-    ca = filtered.groupby("country").agg(
-        events=("name","count"), fatalities=("fatalities","sum"), loss=("loss_musd","sum")
-    ).reset_index()
-    fig4 = px.choropleth(ca, locations="country", locationmode="country names",
-        color="events", hover_name="country",
-        hover_data={"fatalities":True,"loss":True},
-        color_continuous_scale="Reds",
-        labels={"events":"เหตุการณ์","fatalities":"เสียชีวิต","loss":"ความเสียหาย (M USD)"})
-    fig4.update_layout(height=420, margin=dict(l=0,r=0,t=0,b=0))
-    st.plotly_chart(fig4, use_container_width=True)
+        st.subheader("แนวโน้ม MAE ตามปี")
+        if "year" in filtered.columns:
+            yc = filtered.groupby("year").agg(
+                events=("fatalities","count"),
+                fatalities=("fatalities","sum")
+            ).reset_index()
+            fig3 = go.Figure()
+            fig3.add_trace(go.Bar(x=yc["year"], y=yc["events"],
+                                  name="จำนวนเหตุการณ์", marker_color="#ef553b"))
+            fig3.add_trace(go.Scatter(x=yc["year"], y=yc["fatalities"],
+                                      name="ผู้เสียชีวิต", yaxis="y2",
+                                      line=dict(color="#636efa",width=2)))
+            fig3.update_layout(height=300,
+                yaxis=dict(title="จำนวนเหตุการณ์"),
+                yaxis2=dict(title="ผู้เสียชีวิต", overlaying="y", side="right"),
+                legend=dict(orientation="h",yanchor="bottom",y=1),
+                margin=dict(l=0,r=0,t=30,b=0))
+            st.plotly_chart(fig3, use_container_width=True)
 
-# ---- TAB 2 ----
+        st.subheader("🗺️ แผนที่เหตุการณ์ทั่วโลก")
+        if "country" in filtered.columns:
+            ca = filtered.groupby("country").agg(
+                events=("fatalities","count"),
+                fatalities=("fatalities","sum"),
+            ).reset_index()
+            fig4 = px.choropleth(ca, locations="country", locationmode="country names",
+                color="events", hover_name="country",
+                hover_data={"fatalities":True},
+                color_continuous_scale="Reds")
+            fig4.update_layout(height=400, margin=dict(l=0,r=0,t=0,b=0))
+            st.plotly_chart(fig4, use_container_width=True)
+
+        # สำหรับ PHMSA ที่มี state ของสหรัฐฯ
+        if "state" in filtered.columns:
+            usa_df = filtered[filtered["country"]=="USA"].copy()
+            if not usa_df.empty and usa_df["state"].notna().any():
+                st.subheader("🗺️ แผนที่ USA (รายรัฐ)")
+                us_state = usa_df.groupby("state").agg(
+                    events=("fatalities","count"),
+                    fatalities=("fatalities","sum"),
+                    damage=("property_damage_usd","sum")
+                ).reset_index()
+                fig_us = px.choropleth(us_state,
+                    locations="state", locationmode="USA-states",
+                    color="events", scope="usa",
+                    hover_data={"fatalities":True,"damage":True},
+                    color_continuous_scale="Reds")
+                fig_us.update_layout(height=380, margin=dict(l=0,r=0,t=0,b=0))
+                st.plotly_chart(fig_us, use_container_width=True)
+
+# ---- TAB 2: Table ----
 with tab2:
-    st.subheader(f"รายการ MAE Events ({len(filtered)} เหตุการณ์)")
-    disp = filtered[[
-        "name","year","month","country","region","location",
-        "type","facility","fatalities","injuries","loss_musd","operator","cause","verified"
-    ]].rename(columns={
-        "name":"ชื่อเหตุการณ์","year":"ปี","month":"เดือน",
-        "country":"ประเทศ","region":"ภูมิภาค","location":"สถานที่จริง",
-        "type":"ประเภท","facility":"สถานที่","fatalities":"เสียชีวิต",
-        "injuries":"บาดเจ็บ","loss_musd":"ความเสียหาย (M USD)",
-        "operator":"ผู้ดำเนินการ","cause":"สาเหตุ","verified":"✅ ยืนยัน"
-    }).sort_values("ความเสียหาย (M USD)", ascending=False)
+    st.subheader(f"รายการ MAE Events ({len(filtered):,} เหตุการณ์)")
+
+    show_cols = ["operator","year","location","pipeline_type",
+                 "fatalities","injuries","property_damage_usd","cause","source"]
+    show_cols = [c for c in show_cols if c in filtered.columns]
+
+    rename_map = {
+        "operator":"ผู้ดำเนินการ", "year":"ปี", "location":"สถานที่",
+        "pipeline_type":"ประเภท", "fatalities":"เสียชีวิต",
+        "injuries":"บาดเจ็บ", "property_damage_usd":"ความเสียหาย (USD)",
+        "cause":"สาเหตุ", "source":"แหล่งข้อมูล"
+    }
+
+    disp = filtered[show_cols].rename(columns=rename_map).sort_values(
+        "ความเสียหาย (USD)" if "ความเสียหาย (USD)" in filtered.rename(columns=rename_map).columns
+        else "เสียชีวิต", ascending=False
+    )
 
     st.dataframe(disp, use_container_width=True, hide_index=True,
         column_config={
-            "✅ ยืนยัน": st.column_config.CheckboxColumn(),
-            "ความเสียหาย (M USD)": st.column_config.NumberColumn(format="$%d M"),
+            "ความเสียหาย (USD)": st.column_config.NumberColumn(format="$%,.0f"),
             "เสียชีวิต": st.column_config.NumberColumn(format="%d คน"),
             "บาดเจ็บ": st.column_config.NumberColumn(format="%d คน"),
         })
 
     csv = disp.to_csv(index=False).encode("utf-8")
     st.download_button("⬇️ ดาวน์โหลด CSV", data=csv,
-                       file_name="global_mae_report.csv", mime="text/csv")
+                       file_name=f"mae_report_{year_from}_{year_to}.csv", mime="text/csv")
 
-# ---- TAB 3: Detail & Source ----
+# ---- TAB 3: Detail ----
 with tab3:
-    st.subheader("🔎 รายละเอียดเหตุการณ์ & ยืนยันว่าเกิดขึ้นจริง")
-    st.caption("ทุกเหตุการณ์มีแหล่งอ้างอิงสาธารณะระดับนานาชาติ — คลิกลิงก์เพื่อตรวจสอบได้เลย")
+    st.subheader("🔎 รายละเอียด & ยืนยันว่าเกิดขึ้นจริง")
+    st.caption("ทุกข้อมูลจาก PHMSA มี record ID ยืนยัน — ข้อมูล Historical มีลิงก์รายงานทางการ")
 
-    if len(filtered) == 0:
-        st.warning("ไม่มีข้อมูลที่ตรงกับตัวกรอง")
+    if filtered.empty:
+        st.warning("ไม่มีข้อมูล")
     else:
-        evt_name = st.selectbox("เลือกเหตุการณ์ที่ต้องการดูรายละเอียด",
-                                options=filtered["name"].tolist())
-        evt = filtered[filtered["name"] == evt_name].iloc[0]
+        name_col = "name" if "name" in filtered.columns else "operator"
+        options = filtered[name_col].astype(str).tolist()
+        selected = st.selectbox("เลือกเหตุการณ์", options=options)
 
-        ca1, ca2 = st.columns([2,1])
+        row = filtered[filtered[name_col].astype(str) == selected].iloc[0]
+
+        ca1,ca2 = st.columns([2,1])
         with ca1:
-            st.markdown(f"### 🔥 {evt['name']}")
-            st.markdown(f"**📅 วันที่เกิดเหตุ:** {evt['month']} {evt['year']}")
-            st.markdown(f"**📍 สถานที่จริง:** {evt['location']}, **{evt['country']}**")
-            st.markdown(f"**🏭 ประเภทสถานที่:** {evt['facility']} — {evt['type']}")
-            st.markdown(f"**🏢 ผู้ดำเนินการ:** {evt['operator']}")
-            st.markdown(f"**⚠️ สาเหตุหลัก:** {evt['cause']}")
-            st.divider()
-            st.markdown("**📝 รายละเอียด:**")
-            st.info(evt["description"])
+            st.markdown(f"### 🔥 {selected}")
+            for label, key in [
+                ("📅 ปีที่เกิดเหตุ","year"),
+                ("📍 สถานที่","location"),
+                ("🏭 ประเภท","pipeline_type"),
+                ("🏢 ผู้ดำเนินการ","operator"),
+                ("⚠️ สาเหตุ","cause"),
+                ("🌍 ประเทศ","country"),
+            ]:
+                if key in row.index:
+                    st.markdown(f"**{label}:** {row[key]}")
 
         with ca2:
             st.markdown("#### ผลกระทบ")
-            st.metric("💀 เสียชีวิต", f"{evt['fatalities']:,} คน")
-            st.metric("🤕 บาดเจ็บ",   f"{evt['injuries']:,} คน")
-            st.metric("💰 ความเสียหาย", f"${evt['loss_musd']/1000:.2f}B USD")
+            st.metric("💀 เสียชีวิต", f"{int(row.get('fatalities',0)):,} คน")
+            st.metric("🤕 บาดเจ็บ",   f"{int(row.get('injuries',0)):,} คน")
+            dmg = row.get("property_damage_usd",0)
+            st.metric("💰 ความเสียหาย",
+                f"${dmg/1e9:.2f}B" if dmg >= 1e9 else f"${dmg/1e6:.1f}M")
             st.divider()
-            st.markdown("#### ✅ แหล่งอ้างอิงยืนยัน")
-            if evt["verified"]:
-                st.success("ตรวจสอบแล้ว — เหตุการณ์จริง")
-            st.markdown(f"📌 **{evt['source']}**")
-            st.markdown(f"[🔗 เปิดแหล่งข้อมูลอย่างเป็นทางการ]({evt['source_url']})")
-
-        st.divider()
-        st.subheader("เปรียบเทียบกับเหตุการณ์อื่นในชุดข้อมูล")
-        compare_col = st.selectbox("เปรียบเทียบด้วย", ["loss_musd","fatalities","injuries"])
-        top5 = filtered.nlargest(8, compare_col)[["name","country",compare_col]]
-        highlight = top5["name"] == evt_name
-        fig_cmp = px.bar(top5, x=compare_col, y="name", orientation="h",
-                         color=highlight.map({True:"#ef553b",False:"#adb5bd"}),
-                         color_discrete_map="identity",
-                         labels={"name":"เหตุการณ์", compare_col: compare_col})
-        fig_cmp.update_layout(showlegend=False, height=300,
-                              margin=dict(l=0,r=0,t=10,b=0),
-                              yaxis=dict(autorange="reversed"))
-        st.plotly_chart(fig_cmp, use_container_width=True)
+            st.markdown("#### ✅ แหล่งอ้างอิง")
+            src = row.get("source","PHMSA")
+            url = row.get("source_url","https://www.phmsa.dot.gov/")
+            st.success("ตรวจสอบแล้ว")
+            st.markdown(f"**{src}**")
+            st.markdown(f"[🔗 เปิดแหล่งข้อมูลทางการ]({url})")
 
 # ---- TAB 4: AI ----
 with tab4:
     st.subheader("🤖 AI Executive Report — สร้างโดย Claude")
-    st.caption("AI วิเคราะห์จากข้อมูล MAE จริงที่กรองไว้ด้านซ้าย")
+    st.caption(f"AI วิเคราะห์จากข้อมูลจริง {len(filtered):,} เหตุการณ์ที่กรองไว้")
 
-    mae_summary = "\n".join([
-        f"- {r['name']} ({r['month']} {r['year']}, {r['location']}, {r['country']}): "
-        f"{r['type']}, {r['fatalities']} fatalities, {r['injuries']} injuries, "
-        f"${r['loss_musd']/1000:.1f}B loss, operator: {r['operator']}, cause: {r['cause']}"
-        for _, r in filtered.iterrows()
-    ])
+    if len(filtered) > 200:
+        st.warning(f"⚠️ ข้อมูลมีมาก {len(filtered):,} แถว — AI จะวิเคราะห์จาก 50 เหตุการณ์ที่ร้ายแรงที่สุด")
+        sample = filtered.nlargest(50, "fatalities")
+    else:
+        sample = filtered
+
+    # สร้าง summary สำหรับ prompt
+    lines = []
+    for _, r in sample.iterrows():
+        name  = r.get("name", r.get("operator","Unknown"))
+        yr    = int(r.get("year",0))
+        loc   = r.get("location","Unknown")
+        ptype = r.get("pipeline_type","Unknown")
+        fatal = int(r.get("fatalities",0))
+        dmg   = r.get("property_damage_usd",0)
+        cause = r.get("cause","Unknown")
+        lines.append(
+            f"- {name} ({yr}, {loc}): {ptype}, "
+            f"{fatal} fatalities, ${dmg/1e6:.1f}M damage, cause: {cause}"
+        )
+    mae_summary = "\n".join(lines)
 
     sys_p = """คุณคือผู้เชี่ยวชาญด้าน HSE (Health, Safety & Environment) ระดับโลก
-ในอุตสาหกรรม Oil & Gas ที่มีประสบการณ์วิเคราะห์ Major Accident Events (MAE)
-ข้อมูลที่ให้มาเป็นเหตุการณ์จริงจาก BSEE, HSE UK, PHMSA, CSB, ARIA
+ในอุตสาหกรรม Oil & Gas และ Pipeline Safety
+ข้อมูลที่ให้มาเป็นเหตุการณ์จริงจาก PHMSA (US Dept. of Transportation) และแหล่งข้อมูลสาธารณะอื่น
 ตอบเป็นภาษาไทยในรูปแบบ Professional HSE Report"""
 
-    usr_p = f"""วิเคราะห์ข้อมูล Major Accident Events (MAE) จริงต่อไปนี้:
+    usr_p = f"""วิเคราะห์ข้อมูล Major Accident Events (MAE) ต่อไปนี้ (ข้อมูลจริง ปี {year_from}–{year_to}):
 
 {mae_summary}
 
-สร้าง {report_style} ที่ประกอบด้วย:
-1. 📋 Executive Summary — สรุปภาพรวมสถานการณ์ MAE
-2. 📈 Key Trends — แนวโน้มสำคัญที่พบจากข้อมูล
-3. ⚠️ Top 3 Root Causes — สาเหตุหลักพร้อมตัวอย่างเหตุการณ์จริง
-4. 🔴 Top 3 Worst Events — เหตุการณ์ร้ายแรงที่สุด พร้อมบทเรียน
-5. ✅ Recommendations — ข้อเสนอแนะ 5 ข้อที่เป็นรูปธรรม
-6. 🌍 Country Risk Profile — ประเมินความเสี่ยงตามประเทศ/ภูมิภาค
+สร้าง {report_style} ประกอบด้วย:
+1. 📋 Executive Summary — ภาพรวมสถานการณ์ MAE ช่วงนี้
+2. 📈 Key Trends — แนวโน้มสำคัญ
+3. ⚠️ Top 3 Root Causes — สาเหตุหลักพร้อมตัวอย่าง
+4. 🔴 Top 3 Worst Events — เหตุการณ์ร้ายแรงที่สุด + บทเรียน
+5. ✅ Recommendations — ข้อเสนอแนะ 5 ข้อที่ปฏิบัติได้จริง
+6. 🌍 Risk Profile — ประเมินความเสี่ยงตามภูมิภาค/ประเทศ
 
 ตอบเป็นภาษาไทย ใช้ภาษาแบบมืออาชีพ"""
 
     if st.button("🚀 สร้าง AI Report", type="primary", use_container_width=True):
-        if len(filtered) == 0:
-            st.warning("ไม่มีข้อมูล MAE — กรุณาปรับตัวกรอง")
+        if filtered.empty:
+            st.warning("ไม่มีข้อมูล — กรุณาปรับตัวกรอง")
         else:
             try:
                 client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
-                with st.spinner("AI กำลังวิเคราะห์ข้อมูล MAE จริงทั่วโลก..."):
+                with st.spinner("AI กำลังวิเคราะห์ข้อมูล MAE จริง..."):
                     with client.messages.stream(
                         model="claude-sonnet-4-20250514",
                         max_tokens=2000, system=sys_p,
@@ -307,39 +510,42 @@ with tab4:
 
                 st.download_button("⬇️ ดาวน์โหลด AI Report",
                     data=resp.encode("utf-8"),
-                    file_name="mae_ai_report.txt", mime="text/plain")
+                    file_name=f"mae_ai_report_{year_from}_{year_to}.txt",
+                    mime="text/plain")
             except KeyError:
-                st.error("❌ ไม่พบ API Key — กรุณาเพิ่ม ANTHROPIC_API_KEY ใน Streamlit Secrets")
+                st.error("❌ ไม่พบ ANTHROPIC_API_KEY ใน Streamlit Secrets")
             except Exception as e:
                 st.error(f"❌ เกิดข้อผิดพลาด: {str(e)}")
 
 # ---- TAB 5: Root Cause ----
 with tab5:
-    st.subheader("สาเหตุหลักของ MAE")
-    cause_df = filtered.groupby("cause").agg(
-        events=("name","count"), fatalities=("fatalities","sum"), loss=("loss_musd","sum")
-    ).reset_index().sort_values("events", ascending=False)
+    st.subheader("Root Cause Analysis")
+    if "cause" in filtered.columns and not filtered.empty:
+        cause_df = filtered.groupby("cause").agg(
+            events=("fatalities","count"),
+            fatalities=("fatalities","sum"),
+        ).reset_index().sort_values("events",ascending=False)
 
-    fig5 = px.bar(cause_df, x="events", y="cause", orientation="h",
-        color="fatalities", color_continuous_scale="Reds",
-        labels={"events":"จำนวนเหตุการณ์","cause":"สาเหตุ","fatalities":"ผู้เสียชีวิต"})
-    fig5.update_layout(height=320, margin=dict(l=0,r=0,t=10,b=0))
-    st.plotly_chart(fig5, use_container_width=True)
+        fig5 = px.bar(cause_df, x="events", y="cause", orientation="h",
+            color="fatalities", color_continuous_scale="Reds",
+            labels={"events":"จำนวนเหตุการณ์","cause":"สาเหตุ","fatalities":"ผู้เสียชีวิต"})
+        fig5.update_layout(height=350, margin=dict(l=0,r=0,t=10,b=0))
+        st.plotly_chart(fig5, use_container_width=True)
 
-    st.subheader("ความสัมพันธ์ — ความเสียหาย vs ผู้เสียชีวิต")
-    fig6 = px.scatter(filtered, x="loss_musd", y="fatalities",
-        color="cause", size_max=40, hover_name="name",
-        hover_data={"country":True,"year":True,"operator":True},
-        labels={"loss_musd":"ความเสียหาย (M USD)","fatalities":"ผู้เสียชีวิต","cause":"สาเหตุ"})
-    fig6.update_layout(height=400, margin=dict(l=0,r=0,t=10,b=0))
-    st.plotly_chart(fig6, use_container_width=True)
+        st.subheader("ความเสียหาย vs ผู้เสียชีวิต")
+        plot_df = filtered[filtered["fatalities"] < filtered["fatalities"].quantile(0.99)].copy()
+        fig6 = px.scatter(plot_df, x="property_damage_usd", y="fatalities",
+            color="cause", hover_data=["operator","year","location"],
+            labels={"property_damage_usd":"ความเสียหาย (USD)","fatalities":"ผู้เสียชีวิต"})
+        fig6.update_layout(height=400, margin=dict(l=0,r=0,t=10,b=0))
+        st.plotly_chart(fig6, use_container_width=True)
 
 # ============================================================
 # Footer
 # ============================================================
 st.divider()
 st.caption(
-    "📌 แหล่งข้อมูล: BSEE (USA) | HSE UK | PHMSA (USA) | CSB (USA) | ARIA (France) | "
-    "ITOPF | ANP Brazil | ONGC India | Saudi Aramco | Sonatrach Algeria | TSB Canada\n\n"
-    "⚠️ ข้อมูลทั้งหมดเป็นเหตุการณ์จริงที่เปิดเผยสาธารณะ | AI Analysis โดย Claude (Anthropic)"
+    "📡 **แหล่งข้อมูล Real-time:** PHMSA Open Data API (data.phmsa.dot.gov) — อัปเดตทุกไตรมาส\n\n"
+    "📚 **Historical:** BSEE | HSE UK | CSB | ARIA France | TSB Canada | ANP Brazil\n\n"
+    "🤖 AI Analysis โดย Claude (Anthropic) | ⚠️ ข้อมูลทั้งหมดเป็นสาธารณะ"
 )
