@@ -31,25 +31,31 @@ html, body, [class*="css"] {
 
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
-    background: #0D0D0D;
-    border-right: 1px solid #1E1E1E;
+    background: #F7F5F2;
+    border-right: 1px solid #E8E4DF;
 }
-[data-testid="stSidebar"] * { color: #E0E0E0 !important; }
+[data-testid="stSidebar"] * { color: #1A1A1A !important; }
 [data-testid="stSidebar"] .stSelectbox label,
 [data-testid="stSidebar"] .stCheckbox label,
 [data-testid="stSidebar"] .stNumberInput label,
-[data-testid="stSidebar"] .stTextInput label { color: #888 !important; font-size: 11px !important; text-transform: uppercase; letter-spacing: 0.08em; }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color: #888 !important; font-size: 11px; }
+[data-testid="stSidebar"] .stTextInput label {
+    color: #555 !important;
+    font-size: 11px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color: #555 !important; font-size: 11px; }
+[data-testid="stSidebar"] h3 { color: #0D0D0D !important; font-size: 15px !important; font-weight: 600 !important; }
 
 /* ── Sidebar section headers ── */
 .sidebar-section {
     color: #FF4B1F !important;
     font-size: 10px !important;
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: 0.15em;
     text-transform: uppercase;
     padding: 12px 0 4px;
-    border-top: 1px solid #1E1E1E;
+    border-top: 1px solid #E0DDD8;
     margin-top: 8px;
 }
 
