@@ -124,12 +124,35 @@ MAE_DATA = [
     {"name":"Montara Blowout","year":2009,"month":"Aug","country":"Australia","region":"Asia Pacific","location":"Timor Sea","type":"Blowout","facility":"Offshore","fatalities":0,"injuries":0,"loss_b":0.4,"operator":"PTTEP Australasia","cause":"Well Control Failure","source":"Australian Gov","desc":"น้ำมันและก๊าซพุ่งออกจากบ่อ Montara ต่อเนื่องนาน 74 วัน น้ำมันกว่า 30,000 บาร์เรลไหลลงทะเล Timor"},
     {"name":"Sinopec Qingdao","year":2013,"month":"Nov","country":"China","region":"Asia Pacific","location":"Qingdao, China","type":"Explosion","facility":"Midstream","fatalities":62,"injuries":136,"loss_b":0.75,"operator":"Sinopec","cause":"Pipeline Integrity","source":"China MEM","desc":"ท่อส่งน้ำมันรั่วลงท่อระบายน้ำและระเบิดในเมือง Qingdao เป็นอุบัติเหตุท่อน้ำมันที่ร้ายแรงที่สุดในประวัติศาสตร์จีน"},
     {"name":"Vizag LG Polymers","year":2020,"month":"May","country":"India","region":"Asia Pacific","location":"Visakhapatnam, India","type":"Gas Release","facility":"Downstream","fatalities":12,"injuries":1000,"loss_b":0.25,"operator":"LG Polymers","cause":"Human Error","source":"NDMA India","desc":"ก๊าซ Styrene รั่วขณะเริ่มผลิตหลัง COVID-19 lockdown ประชาชนในรัศมี 3 กม. ได้รับผลกระทบ"},
-    # MIDDLE EAST
+    # ASIA PACIFIC — เพิ่มเติม
+    {"name":"Jilin Petrochemical Explosion","year":2005,"month":"Nov","country":"China","region":"Asia Pacific","location":"Jilin City, China","type":"Explosion","facility":"Downstream","fatalities":8,"injuries":60,"loss_b":0.3,"operator":"CNPC","cause":"Human Error","source":"China SEPA","desc":"ระเบิดที่โรงงานเคมี CNPC ในเมือง Jilin สารเคมี Benzene รั่วไหลลงแม่น้ำ Songhua กระทบน้ำดื่มของประชาชน 4 ล้านคน"},
+    {"name":"Tengiz Refinery Explosion","year":2019,"month":"Nov","country":"Kazakhstan","region":"Asia Pacific","location":"Tengiz, Kazakhstan","type":"Explosion","facility":"Upstream","fatalities":0,"injuries":3,"loss_b":0.15,"operator":"Chevron / TengizChevroil","cause":"Equipment Failure","source":"KazMunayGas","desc":"ระเบิดที่แหล่งน้ำมัน Tengiz ซึ่งเป็นหนึ่งในแหล่งน้ำมันที่ใหญ่ที่สุดในโลก เกิดจากอุปกรณ์แยกก๊าซขัดข้อง"},
+    {"name":"Baiji Refinery Explosion","year":2003,"month":"Jul","country":"Iraq","region":"Middle East","location":"Baiji, Iraq","type":"Explosion","facility":"Downstream","fatalities":0,"injuries":0,"loss_b":0.5,"operator":"North Oil Company","cause":"External Attack","source":"Iraqi Gov","desc":"โรงกลั่นน้ำมัน Baiji ซึ่งใหญ่ที่สุดในอิรักถูกโจมตีหลายครั้งระหว่างสงคราม ส่งผลให้กำลังการกลั่นลดลงถึง 70%"},
+    {"name":"Prabumulih Pipeline Explosion","year":2018,"month":"Apr","country":"Indonesia","region":"Asia Pacific","location":"South Sumatra, Indonesia","type":"Explosion","facility":"Midstream","fatalities":0,"injuries":8,"loss_b":0.05,"operator":"Pertamina","cause":"Pipeline Integrity","source":"Pertamina / ESDM","desc":"ท่อส่งน้ำมันของ Pertamina ระเบิดในจังหวัด South Sumatra เกิดจากท่อเก่าผุกร่อน ทำให้น้ำมันดิบไหลออกสู่ชุมชน"},
+    {"name":"Bangka Oil Spill","year":2021,"month":"Apr","country":"Indonesia","region":"Asia Pacific","location":"Bangka Island, Indonesia","type":"Spill","facility":"Midstream","fatalities":0,"injuries":0,"loss_b":0.08,"operator":"Pertamina","cause":"Equipment Failure","source":"KLHK Indonesia","desc":"น้ำมันรั่วไหลจากท่อส่งน้ำมันใต้ทะเลของ Pertamina บริเวณเกาะ Bangka ส่งผลกระทบต่อแหล่งปะการังและประมงชายฝั่ง"},
+    {"name":"Gresik Refinery Fire","year":2014,"month":"Jan","country":"Indonesia","region":"Asia Pacific","location":"Gresik, East Java","type":"Fire","facility":"Downstream","fatalities":0,"injuries":2,"loss_b":0.12,"operator":"Pertamina","cause":"Equipment Failure","source":"Pertamina","desc":"เพลิงไหม้ที่โรงกลั่น Gresik ของ Pertamina ในชวาตะวันออก เกิดจากวาล์วชำรุดในหน่วยกลั่น"},
+    {"name":"Bohai Bay Oil Spill","year":2011,"month":"Jun","country":"China","region":"Asia Pacific","location":"Bohai Bay, China","type":"Spill","facility":"Offshore","fatalities":0,"injuries":0,"loss_b":1.3,"operator":"ConocoPhillips China","cause":"Equipment Failure","source":"China SOA","desc":"น้ำมันรั่วไหลจากแท่นขุดเจาะ Penglai 19-3 ในอ่าว Bohai ต่อเนื่องนานกว่า 3 เดือน น้ำมันปนเปื้อนพื้นที่ทะเล 6,200 ตารางกิโลเมตร"},
+    {"name":"Tianjin Petrochemical Explosion","year":2015,"month":"Aug","country":"China","region":"Asia Pacific","location":"Tianjin, China","type":"Explosion","facility":"Midstream","fatalities":173,"injuries":797,"loss_b":1.1,"operator":"Ruihai International Logistics","cause":"Human Error","source":"China State Council","desc":"ระเบิดขนาดใหญ่ที่คลังสารเคมีในเมือง Tianjin เทียบเท่าแผ่นดินไหว 2.9 ริกเตอร์ ทำลายอาคารในรัศมีกิโลเมตร เป็นภัยพิบัติโรงงานที่ร้ายแรงที่สุดของจีนในรอบทศวรรษ"},
+    {"name":"Rayong IRPC Refinery Fire","year":2012,"month":"May","country":"Thailand","region":"Asia Pacific","location":"Rayong, Thailand","type":"Fire","facility":"Downstream","fatalities":0,"injuries":3,"loss_b":0.08,"operator":"IRPC","cause":"Equipment Failure","source":"DPIM Thailand","desc":"เพลิงไหม้ที่โรงกลั่น IRPC ในนิคมอุตสาหกรรม Map Ta Phut จังหวัดระยอง เกิดจากถังเก็บน้ำมันรั่วและจุดระเบิด"},
+    {"name":"Jurong Island Refinery Fire","year":2011,"month":"Sep","country":"Singapore","region":"Asia Pacific","location":"Jurong Island, Singapore","type":"Fire","facility":"Downstream","fatalities":0,"injuries":0,"loss_b":0.2,"operator":"ExxonMobil Singapore","cause":"Equipment Failure","source":"SCDF Singapore","desc":"เพลิงไหม้ที่โรงกลั่นน้ำมัน ExxonMobil บนเกาะ Jurong เกิดจากก๊าซรั่วในหน่วยกลั่น ควบคุมได้ในคืนเดียวกัน"},
+    {"name":"Ulsan Refinery Explosion","year":2014,"month":"Mar","country":"South Korea","region":"Asia Pacific","location":"Ulsan, South Korea","type":"Explosion","facility":"Downstream","fatalities":1,"injuries":4,"loss_b":0.09,"operator":"SK Energy","cause":"Human Error","source":"KOSHA South Korea","desc":"ระเบิดที่โรงกลั่นน้ำมัน SK Energy ในเมือง Ulsan ขณะทำการซ่อมบำรุง เกิดจากก๊าซสะสมและจุดระเบิด มีผู้เสียชีวิต 1 ราย"},
+    {"name":"Mariana Oil Platform Fire","year":2001,"month":"Mar","country":"Brazil","region":"Americas","location":"Campos Basin, Brazil","type":"Fire","facility":"Offshore","fatalities":0,"injuries":0,"loss_b":0.3,"operator":"Petrobras","cause":"Mechanical Failure","source":"ANP Brazil","desc":"เพลิงไหม้บนแท่นผลิตน้ำมัน Petrobras ในแอ่ง Campos เกิดจากท่อน้ำมันชำรุดขณะทำการผลิต"},
+    # MIDDLE EAST — เพิ่มเติม
     {"name":"Abqaiq Attack","year":2019,"month":"Sep","country":"Saudi Arabia","region":"Middle East","location":"Abqaiq, Saudi Arabia","type":"Explosion","facility":"Downstream","fatalities":0,"injuries":0,"loss_b":10.0,"operator":"Saudi Aramco","cause":"External Attack","source":"EIA","desc":"โจมตีด้วยโดรนต่อโรงงาน Abqaiq ของ Saudi Aramco กำลังผลิตน้ำมันของซาอุดีอาระเบียลดลงกว่า 50%"},
     {"name":"Kuwait Oil Fires","year":1991,"month":"Jan","country":"Kuwait","region":"Middle East","location":"Kuwait Oil Fields","type":"Fire","facility":"Upstream","fatalities":0,"injuries":0,"loss_b":40.0,"operator":"KOC","cause":"External Attack","source":"KOC / UN","desc":"กองทัพอิรักจุดไฟเผาบ่อน้ำมันกว่า 700 แห่งในคูเวต ใช้เวลากว่า 9 เดือนในการดับไฟทั้งหมด"},
-    # AFRICA
+    {"name":"Kharg Island Terminal Fire","year":2005,"month":"Dec","country":"Iran","region":"Middle East","location":"Kharg Island, Iran","type":"Fire","facility":"Midstream","fatalities":0,"injuries":3,"loss_b":0.18,"operator":"NIOC","cause":"Equipment Failure","source":"NIOC Iran","desc":"เพลิงไหม้ที่คลังน้ำมัน Kharg Island ซึ่งเป็นจุดส่งออกน้ำมันหลักของอิรัก เกิดจากถังเก็บน้ำมันดิบรั่วและจุดระเบิด"},
+    {"name":"Ras Tanura Refinery Explosion","year":2006,"month":"Apr","country":"Saudi Arabia","region":"Middle East","location":"Ras Tanura, Saudi Arabia","type":"Explosion","facility":"Downstream","fatalities":0,"injuries":0,"loss_b":0.3,"operator":"Saudi Aramco","cause":"Equipment Failure","source":"Saudi Aramco","desc":"ระเบิดที่โรงกลั่น Ras Tanura ซึ่งเป็นโรงกลั่นที่ใหญ่ที่สุดในโลก เกิดจากก๊าซรั่วในหน่วยกลั่น ควบคุมได้อย่างรวดเร็ว"},
+    {"name":"Mosul Pipeline Attacks","year":2014,"month":"Jun","country":"Iraq","region":"Middle East","location":"Nineveh Province, Iraq","type":"Fire","facility":"Midstream","fatalities":0,"injuries":0,"loss_b":0.8,"operator":"North Oil Company","cause":"External Attack","source":"Iraqi Ministry of Oil","desc":"ท่อส่งน้ำมันในจังหวัด Nineveh ถูกโจมตีและเผาซ้ำหลายครั้งในช่วงสงคราม ISIS ทำให้การส่งออกน้ำมันทางเหนือของอิรักหยุดชะงักหลายปี"},
+    {"name":"Bandar Abbas Refinery Fire","year":2011,"month":"Feb","country":"Iran","region":"Middle East","location":"Bandar Abbas, Iran","type":"Fire","facility":"Downstream","fatalities":2,"injuries":12,"loss_b":0.22,"operator":"Persian Gulf Star Oil Co.","cause":"Equipment Failure","source":"NIOC Iran","desc":"เพลิงไหม้ที่โรงกลั่นน้ำมัน Bandar Abbas ในจังหวัด Hormozgan เกิดจากหม้อต้มระเบิดขณะทำการบำรุงรักษา"},
+    {"name":"Umm Said LNG Explosion","year":1977,"month":"Apr","country":"Qatar","region":"Middle East","location":"Umm Said, Qatar","type":"Explosion","facility":"LNG","fatalities":6,"injuries":30,"loss_b":0.12,"operator":"Qatar Liquefied Gas Co.","cause":"Equipment Failure","source":"Qatar Petroleum","desc":"ระเบิดที่โรงงาน LNG Umm Said ของกาตาร์ ซึ่งเป็นอุบัติเหตุ LNG ครั้งสำคัญครั้งแรกในตะวันออกกลาง เกิดจากถังเก็บ LNG รั่วและวาบไฟ"},
+    {"name":"Ruwais Refinery Fire","year":2012,"month":"Jun","country":"UAE","region":"Middle East","location":"Ruwais, Abu Dhabi, UAE","type":"Explosion","facility":"Downstream","fatalities":0,"injuries":0,"loss_b":0.8,"operator":"ADNOC Refining","cause":"Equipment Failure","source":"ADNOC / UAE MOI","desc":"ระเบิดและเพลิงไหม้ที่โรงกลั่น Ruwais ของ ADNOC ในอาบูดาบี เกิดจากก๊าซรั่วในหน่วยกลั่น การอพยพพนักงานกว่า 3,000 คนดำเนินได้อย่างรวดเร็ว"},
+    {"name":"Jubail Petrochemical Fire","year":2016,"month":"Apr","country":"Saudi Arabia","region":"Middle East","location":"Jubail Industrial City, Saudi Arabia","type":"Fire","facility":"Downstream","fatalities":0,"injuries":5,"loss_b":0.15,"operator":"SABIC / Saudi Kayan","cause":"Equipment Failure","source":"SABIC","desc":"เพลิงไหม้ที่โรงงานปิโตรเคมีของ Saudi Kayan ในนิคมอุตสาหกรรม Jubail เกิดจากท่อส่งเอทิลีนรั่วและจุดระเบิด"},
+    {"name":"Sohar Refinery Explosion","year":2013,"month":"Apr","country":"Oman","region":"Middle East","location":"Sohar, Oman","type":"Explosion","facility":"Downstream","fatalities":0,"injuries":1,"loss_b":0.1,"operator":"Oman Oil Refineries (ORPIC)","cause":"Equipment Failure","source":"ORPIC Oman","desc":"ระเบิดที่โรงกลั่น Sohar ของ ORPIC ในโอมาน เกิดจากปั๊มน้ำมันขัดข้องในหน่วยกลั่น Crude Distillation"},
+    # AFRICA — เพิ่มเติม
     {"name":"Skikda LNG","year":2004,"month":"Jan","country":"Algeria","region":"Africa","location":"Skikda, Algeria","type":"Explosion","facility":"LNG","fatalities":27,"injuries":74,"loss_b":0.9,"operator":"Sonatrach","cause":"Equipment Failure","source":"Sonatrach","desc":"ระเบิดที่โรงงาน LNG ของ Sonatrach ใน Skikda เป็นอุบัติเหตุ LNG ที่ร้ายแรงที่สุดในโลก"},
     {"name":"Nairobi Pipeline","year":2011,"month":"Sep","country":"Kenya","region":"Africa","location":"Nairobi, Kenya","type":"Fire","facility":"Midstream","fatalities":120,"injuries":200,"loss_b":0.08,"operator":"Kenya Pipeline Co.","cause":"Pipeline Integrity","source":"KNCHR","desc":"ท่อส่งน้ำมันระเบิดในชุมชน Sinai กรุงไนโรบี ประชาชนที่มาเก็บน้ำมันรั่วไหลได้รับบาดเจ็บและเสียชีวิตจำนวนมาก"},
+    {"name":"Niger Delta Pipeline Fire","year":2012,"month":"Nov","country":"Nigeria","region":"Africa","location":"Rivers State, Nigeria","type":"Fire","facility":"Midstream","fatalities":5,"injuries":0,"loss_b":0.05,"operator":"Shell SPDC","cause":"Pipeline Integrity","source":"Shell SPDC / NOSDRA","desc":"ท่อส่งน้ำมันของ Shell ระเบิดในพื้นที่ Niger Delta จากการลักขโมยน้ำมัน (bunkering) น้ำมันรั่วทำลายพื้นที่เกษตรและประมง"},
+    {"name":"Bonga FPSO Oil Spill","year":2011,"month":"Dec","country":"Nigeria","region":"Africa","location":"Bonga Offshore, Nigeria","type":"Spill","facility":"Offshore","fatalities":0,"injuries":0,"loss_b":0.4,"operator":"Shell Nigeria Exploration","cause":"Equipment Failure","source":"NOSDRA Nigeria","desc":"น้ำมันรั่วจากเรือ FPSO Bonga นอกชายฝั่งไนจีเรีย น้ำมันกว่า 40,000 บาร์เรลไหลลงทะเล เป็นเหตุการณ์น้ำมันรั่วครั้งใหญ่ที่สุดในไนจีเรียนับทศวรรษ"},
 ]
 
 # ข่าว MAE ล่าสุดที่รวบรวมไว้ (อัปเดตล่าสุด 2024-2025)
@@ -197,6 +220,62 @@ RECENT_NEWS = [
         "desc": "ท่อส่งก๊าซธรรมชาติระเบิดในมณฑล Xinjiang เกิดจากรอยแตกร้าวในท่อจากอุณหภูมิต่ำสุดขีด มีผู้เสียชีวิต 3 ราย",
         "source": "China MEM / Reuters 2025",
         "tag": "Pipeline", "severity": "red"
+    },
+    {
+        "title": "Offshore Platform Crane Collapse — Malaysia (2024)",
+        "date": "ต.ค. 2024", "country": "Malaysia", "type": "Structural",
+        "operator": "Petronas Carigali", "fatalities": 1, "injuries": 3,
+        "desc": "เครนบนแท่นขุดเจาะนอกชายฝั่ง Sabah ของ Petronas Carigali พังถล่มระหว่างการยกวัสดุ มีผู้เสียชีวิต 1 ราย บาดเจ็บ 3 ราย",
+        "source": "DOSH Malaysia / Offshore Technology 2024",
+        "tag": "Offshore", "severity": "red"
+    },
+    {
+        "title": "LPG Tank Explosion — Rayong Thailand (2024)",
+        "date": "ก.ย. 2024", "country": "Thailand", "type": "Explosion",
+        "operator": "PTT Global Chemical", "fatalities": 0, "injuries": 5,
+        "desc": "ถังเก็บ LPG รั่วไหลและระเบิดที่นิคมอุตสาหกรรม Map Ta Phut จังหวัดระยอง เกิดจากวาล์วชำรุด ระงับได้ภายใน 4 ชั่วโมง",
+        "source": "DPIM Thailand / Bangkok Post 2024",
+        "tag": "LPG", "severity": "red"
+    },
+    {
+        "title": "Pertamina Refinery Fire — Cilacap Indonesia (2024)",
+        "date": "มี.ค. 2024", "country": "Indonesia", "type": "Fire",
+        "operator": "Pertamina", "fatalities": 0, "injuries": 0,
+        "desc": "เพลิงไหม้ที่โรงกลั่นน้ำมัน Cilacap ของ Pertamina ซึ่งเป็นโรงกลั่นที่ใหญ่ที่สุดในอินโดนีเซีย เกิดจากถังเก็บน้ำมันรั่ว ดับได้ในชั่วโมงเดียว",
+        "source": "Pertamina / Kompas 2024",
+        "tag": "Downstream", "severity": "orange"
+    },
+    {
+        "title": "ONGC Platform Gas Leak — Mumbai Offshore (2024)",
+        "date": "ก.พ. 2024", "country": "India", "type": "Gas Release",
+        "operator": "ONGC", "fatalities": 0, "injuries": 0,
+        "desc": "ก๊าซรั่วจากแท่นขุดเจาะของ ONGC นอกชายฝั่ง Mumbai ต้องระงับการผลิตชั่วคราวและอพยพพนักงานบางส่วน ควบคุมได้ภายใน 12 ชั่วโมง",
+        "source": "OISD India / Times of India 2024",
+        "tag": "Offshore", "severity": "orange"
+    },
+    {
+        "title": "Saudi Aramco Pipeline Leak — Eastern Province (2024)",
+        "date": "พ.ค. 2024", "country": "Saudi Arabia", "type": "Spill",
+        "operator": "Saudi Aramco", "fatalities": 0, "injuries": 0,
+        "desc": "ท่อส่งน้ำมันดิบของ Saudi Aramco รั่วไหลในจังหวัด Eastern Province น้ำมันกว่า 5,000 บาร์เรลไหลลงพื้นดิน เกิดจากการกัดกร่อนภายนอก",
+        "source": "Saudi Aramco / Arab News 2024",
+        "tag": "Pipeline", "severity": "orange"
+    },
+    {
+        "title": "ADNOC Offshore Gas Release — UAE (2024)",
+        "date": "ก.ค. 2024", "country": "UAE", "type": "Gas Release",
+        "operator": "ADNOC Offshore", "fatalities": 0, "injuries": 2,
+        "desc": "ก๊าซรั่วจากแท่นขุดเจาะ ADNOC นอกชายฝั่งอาบูดาบี เกิดจากปะเก็นรั่วในระบบท่อก๊าซ ต้องอพยพพนักงาน 45 คน ควบคุมได้ใน 3 ชั่วโมง",
+        "source": "ADNOC / The National UAE 2024",
+        "tag": "Offshore", "severity": "orange"
+    },
+    {
+        "title": "Iraq Kirkuk Pipeline Attack (2024)",
+        "date": "ส.ค. 2024", "country": "Iraq", "type": "Fire",
+        "operator": "North Oil Company Iraq", "fatalities": 0, "injuries": 0,
+        "desc": "ท่อส่งน้ำมันดิบจาก Kirkuk ถูกโจมตีและเกิดเพลิงไหม้ ทำให้การส่งออกน้ำมันทางเหนือของอิรักหยุดชะงักชั่วคราว สูญเสียกำลังการผลิตกว่า 300,000 บาร์เรลต่อวัน",
+        "source": "Iraqi Ministry of Oil / Reuters 2024",
+        "tag": "Midstream", "severity": "red"
     },
 ]
 
