@@ -595,7 +595,7 @@ with tab_chart:
                               font=dict(family="DM Sans"), margin=dict(l=0,r=0,t=20,b=0),
                               xaxis=dict(gridcolor="#F0EDE8"), yaxis=dict(autorange="reversed"),
                               title=dict(text="Top 10 ประเทศ", font=dict(size=13)))
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         with r2:
             rc = filtered.groupby("region").size().reset_index(name="count")
             fig2 = px.pie(rc, values="count", names="region",
@@ -603,7 +603,7 @@ with tab_chart:
             fig2.update_layout(height=300, plot_bgcolor="white", paper_bgcolor="white",
                                font=dict(family="DM Sans"), margin=dict(l=0,r=0,t=20,b=0),
                                title=dict(text="สัดส่วนตามภูมิภาค", font=dict(size=13)))
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, width='stretch')
 
         yc = filtered.groupby("year").agg(events=("name","count"), fatalities=("fatalities","sum"), loss=("loss_b","sum")).reset_index()
         fig3 = go.Figure()
@@ -615,16 +615,25 @@ with tab_chart:
                            yaxis=dict(title="Events", gridcolor="#F0EDE8"),
                            yaxis2=dict(title="เสียชีวิต", overlaying="y", side="right"),
                            legend=dict(orientation="h", y=1.08), xaxis=dict(gridcolor="#F0EDE8"))
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig3, width='stretch')
 
+        # แปลง country name → ISO-3 เพื่อให้ choropleth แสดงผลถูกต้องทุก version
+        ISO3_MAP = {
+            "USA": "USA", "UK": "GBR", "Canada": "CAN", "France": "FRA",
+            "Russia": "RUS", "Belgium": "BEL", "Australia": "AUS", "India": "IND",
+            "China": "CHN", "Saudi Arabia": "SAU", "Kuwait": "KWT", "Algeria": "DZA",
+            "Nigeria": "NGA", "Kenya": "KEN", "Mexico": "MEX", "Brazil": "BRA",
+            "Norway": "NOR", "Thailand": "THA", "Malaysia": "MYS",
+        }
         ca = filtered.groupby("country").agg(events=("name","count"), fatalities=("fatalities","sum")).reset_index()
-        fig4 = px.choropleth(ca, locations="country", locationmode="country names",
+        ca["iso3"] = ca["country"].map(ISO3_MAP).fillna(ca["country"])
+        fig4 = px.choropleth(ca, locations="iso3", locationmode="ISO-3",
             color="events", hover_name="country", hover_data={"fatalities":True},
             color_continuous_scale=["#F7F5F2","#FF9980","#FF4B1F","#CC2200","#800000"])
         fig4.update_layout(height=380, margin=dict(l=0,r=0,t=30,b=0), paper_bgcolor="white",
                            font=dict(family="DM Sans"), title=dict(text="แผนที่ MAE ทั่วโลก", font=dict(size=13)),
                            geo=dict(bgcolor="white", lakecolor="#F7F5F2", landcolor="#F0EDE8", showframe=False))
-        st.plotly_chart(fig4, use_container_width=True)
+        st.plotly_chart(fig4, width='stretch')
 
 # ── TAB 3: Table ──
 with tab_table:
@@ -634,7 +643,7 @@ with tab_table:
         "type":"ประเภท","facility":"สถานที่","fatalities":"เสียชีวิต","injuries":"บาดเจ็บ",
         "loss_b":"ความเสียหาย ($B)","operator":"บริษัท","cause":"สาเหตุ","source":"แหล่งข้อมูล"
     }).sort_values("ความเสียหาย ($B)", ascending=False)
-    st.dataframe(disp, use_container_width=True, hide_index=True,
+    st.dataframe(disp, width='stretch', hide_index=True,
         column_config={
             "ความเสียหาย ($B)": st.column_config.NumberColumn(format="$%.2fB"),
             "เสียชีวิต": st.column_config.NumberColumn(format="%d คน"),
@@ -681,7 +690,7 @@ with tab_bsee:
                              font=dict(family="DM Sans"),margin=dict(l=0,r=0,t=30,b=0),
                              title=dict(text="ผู้เสียชีวิต & บาดเจ็บ",font=dict(size=13)),
                              legend=dict(orientation="h",y=1.1))
-        st.plotly_chart(fig_fi, use_container_width=True)
+        st.plotly_chart(fig_fi, width='stretch')
     with r2:
         fig_fg = go.Figure()
         fig_fg.add_trace(go.Scatter(x=bsee["year"],y=bsee["fires"],name="ไฟไหม้",line=dict(color="#FF4B1F",width=2)))
@@ -691,10 +700,10 @@ with tab_bsee:
                              font=dict(family="DM Sans"),margin=dict(l=0,r=0,t=30,b=0),
                              title=dict(text="ไฟ / ก๊าซรั่ว / Spill",font=dict(size=13)),
                              legend=dict(orientation="h",y=1.1))
-        st.plotly_chart(fig_fg, use_container_width=True)
+        st.plotly_chart(fig_fg, width='stretch')
     st.dataframe(bsee.sort_values("year",ascending=False).rename(columns={
         "year":"ปี","fatalities":"เสียชีวิต","injuries":"บาดเจ็บ","fires":"ไฟไหม้","gas_releases":"ก๊าซรั่ว","spills":"Spills"
-    }), use_container_width=True, hide_index=True)
+    }), width='stretch', hide_index=True)
     st.markdown('<a href="https://www.bsee.gov/stats-facts/offshore-incident-statistics" target="_blank" style="font-size:12px;color:#FF4B1F">🔗 ดูข้อมูลต้นฉบับ bsee.gov →</a>', unsafe_allow_html=True)
 
 # ── TAB 6: AI Report ──
@@ -703,6 +712,7 @@ with tab_ai:
     st.success("✅ AI Report นี้ไม่ต้องใช้ API Key — ใช้งานได้ฟรีทันที")
 
     rstyle = st.selectbox("เลือกรูปแบบ Report", list(AI_REPORTS.keys()))
+    # หมายเหตุ: st.button ยังคงใช้ use_container_width (ไม่มี width= param สำหรับ button)
     if st.button("📄  แสดง AI Report", type="primary", use_container_width=True):
         st.markdown(f'<div class="ai-box">{AI_REPORTS[rstyle]}</div>', unsafe_allow_html=True)
         st.download_button("⬇️  ดาวน์โหลด Report (.txt)",
