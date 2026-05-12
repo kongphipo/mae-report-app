@@ -3,6 +3,122 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime
+import requests
+import io
+
+# ============================================================
+# ARIA/BARPI — ดึงข้อมูล 53,000+ incidents ทั่วโลก
+# ที่มา: data.gouv.fr (French Ministry of Ecology)
+# ใบอนุญาต: Licence Ouverte / Open Licence 2.0 (ใช้ฟรีได้)
+# ============================================================
+
+ARIA_XLSX_URL = "https://www.data.gouv.fr/api/1/datasets/r/a811a3fb-03b4-458e-aadb-4180dd76a335"
+
+ARIA_OIL_GAS_KEYWORDS = [
+    "pétrole","petrol","gaz","gas","raffin","pipeline",
+    "hydrocarbur","offshore","puits","forage","lng","gnl",
+    "terminal","chimique","chemical","explosion","incendie",
+    "blowout","spill","déversement",
+]
+
+ARIA_ACTIVITY_MAP = {
+    "Raffinage de pétrole": "Refinery / Downstream",
+    "Production de pétrole": "Upstream / Production",
+    "Transport par canalisations": "Pipeline / Midstream",
+    "Distribution de gaz": "Gas Distribution",
+    "Chimie de base": "Chemical / Process",
+    "Pétrochimie": "Petrochemical",
+    "Stockage gaz": "Gas Storage",
+    "Production de gaz": "Gas Production",
+    "Transport maritime": "Marine / Offshore",
+    "Transport routier": "Road Transport HazMat",
+}
+
+@st.cache_data(ttl=21600)
+def fetch_aria_data() -> pd.DataFrame:
+    """ดึงและกรองข้อมูล ARIA/BARPI สำหรับ Oil & Gas incidents"""
+    try:
+        resp = requests.get(
+            ARIA_XLSX_URL, timeout=60,
+            headers={"User-Agent": "MAE-Intelligence/1.0"},
+            allow_redirects=True,
+        )
+        resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "")
+        if "html" in content_type.lower() or len(resp.content) < 10000:
+            return pd.DataFrame()
+
+        df = pd.read_excel(io.BytesIO(resp.content), engine="openpyxl")
+
+        # กรอง Oil & Gas keywords
+        text_cols = [c for c in df.columns if df[c].dtype == object]
+        combined = df[text_cols].fillna("").astype(str).apply(
+            lambda row: " ".join(row).lower(), axis=1
+        )
+        mask = combined.apply(lambda t: any(kw in t for kw in ARIA_OIL_GAS_KEYWORDS))
+        df_og = df[mask].copy()
+        if df_og.empty:
+            return pd.DataFrame()
+
+        # Rename columns
+        col_map = {
+            "annee":"year","an":"year","date_accident":"date_raw",
+            "commune":"city","pays":"country_raw","libelle_pays":"country_raw",
+            "libelle_activite":"activity_raw","libelle_famille":"family",
+            "libelle_effet":"effect_raw","nb_morts":"fatalities",
+            "nb_blesses":"injuries","resume":"desc","synthese":"desc",
+            "numero":"aria_id","no_accident":"aria_id",
+        }
+        df_og = df_og.rename(columns={k:v for k,v in col_map.items() if k in df_og.columns})
+
+        # year
+        if "year" not in df_og.columns:
+            if "date_raw" in df_og.columns:
+                df_og["year"] = pd.to_datetime(df_og["date_raw"], errors="coerce").dt.year
+            else:
+                df_og["year"] = 2000
+        df_og["year"] = pd.to_numeric(df_og["year"], errors="coerce")
+        df_og = df_og[df_og["year"].between(1970, 2025)].copy()
+
+        for col in ["fatalities","injuries"]:
+            df_og[col] = pd.to_numeric(df_og.get(col, 0), errors="coerce").fillna(0).astype(int)
+
+        # country & region
+        df_og["country"] = df_og.get("country_raw", pd.Series("France", index=df_og.index)).fillna("France")
+        region_map = {
+            "France":"Europe","Germany":"Europe","UK":"Europe","Belgium":"Europe",
+            "Netherlands":"Europe","Italy":"Europe","Spain":"Europe","Norway":"Europe",
+            "USA":"Americas","Canada":"Americas","Mexico":"Americas","Brazil":"Americas",
+            "India":"Asia Pacific","China":"Asia Pacific","Australia":"Asia Pacific",
+            "Saudi Arabia":"Middle East","Iran":"Middle East","Kuwait":"Middle East","UAE":"Middle East",
+            "Nigeria":"Africa","Algeria":"Africa","Egypt":"Africa","Libya":"Africa",
+        }
+        df_og["region"] = df_og["country"].map(region_map).fillna("Europe")
+
+        # facility, type, name, desc
+        if "activity_raw" in df_og.columns:
+            df_og["facility"] = df_og["activity_raw"].map(ARIA_ACTIVITY_MAP).fillna("Industrial")
+        else:
+            df_og["facility"] = "Industrial"
+        df_og["type"] = df_og.get("effect_raw", pd.Series("Incident", index=df_og.index)).astype(str).str.strip().str.title().fillna("Incident")
+        df_og["name"] = "ARIA-" + (df_og.get("aria_id", pd.Series(df_og.index, index=df_og.index)).astype(str))
+        if "desc" not in df_og.columns:
+            df_og["desc"] = "ARIA/BARPI industrial incident record"
+        df_og["month"] = ""
+        df_og["location"] = df_og.get("city", pd.Series("", index=df_og.index)).fillna("").astype(str)
+        df_og["operator"] = "See ARIA record"
+        df_og["cause"]    = "See ARIA report"
+        df_og["loss_b"]   = 0.0
+        df_og["source"]   = "ARIA/BARPI (data.gouv.fr)"
+
+        keep = ["name","year","month","country","region","location",
+                "type","facility","fatalities","injuries","loss_b",
+                "operator","cause","source","desc"]
+        return df_og[[c for c in keep if c in df_og.columns]].reset_index(drop=True)
+
+    except Exception:
+        return pd.DataFrame()
+
 
 # ============================================================
 # PAGE CONFIG — ไม่ต้องใช้ Anthropic API เลย ใช้งานฟรี 100%
@@ -458,7 +574,12 @@ SECTION 3: RECOMMENDATIONS BY PRIORITY
 """
 }
 
-df = pd.DataFrame(MAE_DATA)
+df_base = pd.DataFrame(MAE_DATA)
+
+# ============================================================
+# โหลด ARIA data (ถ้า user เปิด toggle)
+# ต้องทำหลัง sidebar เพื่อให้อ่านค่า use_aria ได้
+# ============================================================
 
 # ============================================================
 # SIDEBAR
@@ -471,11 +592,29 @@ with st.sidebar:
     year_to   = st.number_input("ปีสิ้นสุด",  min_value=1984, max_value=2025, value=2025)
     st.markdown('<p class="sidebar-section">🔍 กรองข้อมูล</p>', unsafe_allow_html=True)
     search_q   = st.text_input("ค้นหา", placeholder="เช่น explosion, BP, India...")
-    regions    = st.multiselect("ภูมิภาค", df["region"].unique().tolist(), default=df["region"].unique().tolist())
+    regions    = st.multiselect("ภูมิภาค", sorted(df_base["region"].unique().tolist()), default=sorted(df_base["region"].unique().tolist()))
     only_fatal = st.checkbox("เฉพาะที่มีผู้เสียชีวิต")
+    st.markdown('<p class="sidebar-section">📡 แหล่งข้อมูล</p>', unsafe_allow_html=True)
+    use_aria = st.checkbox("🌍 ARIA/BARPI (53,000+ Global)", value=True,
+        help="ข้อมูลจาก French Ministry of Ecology — อุตสาหกรรมทั่วโลก ใช้ฟรี")
     st.markdown("---")
-    st.markdown(f'<span class="source-tag">BSEE</span><span class="source-tag">PHMSA</span><span class="source-tag">HSE UK</span><span class="source-tag">CSB</span><span class="source-tag">ARIA</span>', unsafe_allow_html=True)
+    st.markdown(f'<span class="source-tag">ARIA</span><span class="source-tag">BSEE</span><span class="source-tag">PHMSA</span><span class="source-tag">HSE UK</span><span class="source-tag">CSB</span>', unsafe_allow_html=True)
     st.markdown(f'<p style="font-size:10px;color:#888;margin-top:8px;">อัปเดต {datetime.now().strftime("%d %b %Y")}</p>', unsafe_allow_html=True)
+
+# ── โหลด ARIA และรวมกับ Historical MAE ──
+aria_status = ""
+if use_aria:
+    with st.spinner("🌍 กำลังดึงข้อมูล ARIA/BARPI (53,000+ incidents)..."):
+        aria_df = fetch_aria_data()
+    if not aria_df.empty:
+        df = pd.concat([df_base, aria_df], ignore_index=True)
+        df["year"] = pd.to_numeric(df["year"], errors="coerce").fillna(0).astype(int)
+        aria_status = f"✅ ARIA: {len(aria_df):,} Oil & Gas incidents"
+    else:
+        df = df_base.copy()
+        aria_status = "⚠️ ARIA: ไม่สามารถเชื่อมต่อ — ใช้ Historical data แทน"
+else:
+    df = df_base.copy()
 
 # Filter
 filtered = df[
@@ -529,14 +668,22 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
+# แสดงสถานะ ARIA
+if aria_status:
+    if aria_status.startswith("✅"):
+        st.success(aria_status + f" | Historical: {len(df_base)} เหตุการณ์ | รวม: {len(df):,} records")
+    else:
+        st.warning(aria_status)
+
 # ============================================================
 # TABS
 # ============================================================
-tab_news, tab_chart, tab_table, tab_detail, tab_bsee, tab_ai = st.tabs([
+tab_news, tab_chart, tab_table, tab_detail, tab_aria, tab_bsee, tab_ai = st.tabs([
     "📰  ข่าวล่าสุด",
     "📊  Charts",
     "📋  รายการ",
     "🔎  รายละเอียด",
+    "🌍  ARIA Global",
     "🛢️  BSEE Trends",
     "🤖  AI Report",
 ])
@@ -677,7 +824,123 @@ with tab_detail:
             st.success("✅ เหตุการณ์จริง")
             st.markdown(f"**📌 {evt['source']}**")
 
-# ── TAB 5: BSEE ──
+# ── TAB 5: ARIA Global ──
+with tab_aria:
+    st.markdown('<div class="section-header"><span class="section-label">ARIA · BARPI · data.gouv.fr</span><span class="section-title">Global Industrial Incidents Database</span><span class="section-line"></span></div>', unsafe_allow_html=True)
+
+    if not use_aria:
+        st.info("เปิดใช้ ARIA/BARPI ได้จาก Sidebar ด้านซ้าย")
+    else:
+        aria_df_display = df[df["source"].str.contains("ARIA", na=False)].copy() if "source" in df.columns else pd.DataFrame()
+
+        if aria_df_display.empty:
+            st.warning("⚠️ ยังไม่ได้รับข้อมูลจาก ARIA — อาจต้องรอสักครู่ หรือ ARIA server ไม่ตอบสนอง")
+            st.markdown("""
+            **วิธีแก้ไข:**
+            1. กด F5 หรือ Refresh หน้าเว็บ
+            2. ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต
+            3. ลองกด Refresh ที่ Streamlit (hamburger menu → Rerun)
+
+            **ข้อมูล ARIA เมื่อโหลดสำเร็จ:**
+            - 53,000+ incidents ทั่วโลก
+            - กรองเฉพาะ Oil & Gas แล้ว
+            - ครอบคลุม Europe, Americas, Asia, Middle East, Africa
+            """)
+        else:
+            # Metrics ARIA
+            a1,a2,a3,a4 = st.columns(4)
+            a1.metric("🌍 ARIA Records", f"{len(aria_df_display):,}")
+            a2.metric("💀 เสียชีวิต (ARIA)", f"{int(aria_df_display['fatalities'].sum()):,}")
+            a3.metric("🤕 บาดเจ็บ (ARIA)", f"{int(aria_df_display['injuries'].sum()):,}")
+            a4.metric("🗺️ ประเทศ", aria_df_display['country'].nunique())
+
+            st.markdown("---")
+
+            r1,r2 = st.columns(2)
+            with r1:
+                st.subheader("เหตุการณ์ตามประเทศ (Top 15)")
+                aria_country = aria_df_display.groupby("country").size().reset_index(name="count").nlargest(15,"count")
+                fig_ac = px.bar(aria_country, x="count", y="country", orientation="h",
+                                color="count", color_continuous_scale=["#F7F5F2","#FF9980","#FF4B1F"])
+                fig_ac.update_layout(showlegend=False, height=400,
+                                     plot_bgcolor="white", paper_bgcolor="white",
+                                     font=dict(family="DM Sans"),
+                                     margin=dict(l=0,r=0,t=10,b=0),
+                                     yaxis=dict(autorange="reversed"))
+                st.plotly_chart(fig_ac, width='stretch')
+
+            with r2:
+                st.subheader("ตามประเภทสถานที่")
+                aria_fac = aria_df_display.groupby("facility").size().reset_index(name="count").nlargest(10,"count")
+                fig_af = px.pie(aria_fac, values="count", names="facility",
+                                color_discrete_sequence=["#FF4B1F","#0D0D0D","#888","#E8E4DF","#CC2200","#FFB3A0","#555","#CCC","#F0EDE8","#AAA"])
+                fig_af.update_layout(height=400, plot_bgcolor="white", paper_bgcolor="white",
+                                     font=dict(family="DM Sans"), margin=dict(l=0,r=0,t=10,b=0))
+                st.plotly_chart(fig_af, width='stretch')
+
+            st.subheader("แนวโน้มตามปี (ARIA)")
+            aria_yr = aria_df_display.groupby("year").agg(
+                events=("name","count"), fatalities=("fatalities","sum")
+            ).reset_index()
+            fig_ayr = go.Figure()
+            fig_ayr.add_trace(go.Bar(x=aria_yr["year"], y=aria_yr["events"],
+                                     name="Events", marker_color="#E8E4DF",
+                                     marker_line_color="#0D0D0D", marker_line_width=0.5))
+            fig_ayr.add_trace(go.Scatter(x=aria_yr["year"], y=aria_yr["fatalities"],
+                                         name="เสียชีวิต", yaxis="y2",
+                                         line=dict(color="#FF4B1F",width=2)))
+            fig_ayr.update_layout(height=280, plot_bgcolor="white", paper_bgcolor="white",
+                                   font=dict(family="DM Sans"), margin=dict(l=0,r=0,t=20,b=0),
+                                   yaxis=dict(title="Events", gridcolor="#F0EDE8"),
+                                   yaxis2=dict(title="เสียชีวิต", overlaying="y", side="right"),
+                                   legend=dict(orientation="h",y=1.08))
+            st.plotly_chart(fig_ayr, width='stretch')
+
+            # แผนที่ ARIA
+            st.subheader("🗺️ แผนที่ ARIA ทั่วโลก")
+            ISO3_ARIA = {
+                "France":"FRA","Germany":"DEU","UK":"GBR","Belgium":"BEL",
+                "Netherlands":"NLD","Italy":"ITA","Spain":"ESP","Norway":"NOR",
+                "USA":"USA","Canada":"CAN","Mexico":"MEX","Brazil":"BRA",
+                "India":"IND","China":"CHN","Australia":"AUS","Japan":"JPN",
+                "Saudi Arabia":"SAU","Iran":"IRN","Kuwait":"KWT","UAE":"ARE",
+                "Nigeria":"NGA","Algeria":"DZA","Egypt":"EGY","Libya":"LBY",
+            }
+            aria_map = aria_df_display.groupby("country").agg(
+                events=("name","count"), fatalities=("fatalities","sum")
+            ).reset_index()
+            aria_map["iso3"] = aria_map["country"].map(ISO3_ARIA).fillna(aria_map["country"])
+            fig_am = px.choropleth(aria_map, locations="iso3", locationmode="ISO-3",
+                color="events", hover_name="country", hover_data={"fatalities":True},
+                color_continuous_scale=["#F7F5F2","#FF9980","#FF4B1F","#CC2200","#800000"])
+            fig_am.update_layout(height=360, margin=dict(l=0,r=0,t=0,b=0),
+                                  paper_bgcolor="white", font=dict(family="DM Sans"),
+                                  geo=dict(bgcolor="white", lakecolor="#F7F5F2",
+                                           landcolor="#F0EDE8", showframe=False))
+            st.plotly_chart(fig_am, width='stretch')
+
+            # แสดงตัวอย่าง records
+            st.subheader(f"ตัวอย่าง ARIA Records (แสดง 100 รายการแรก)")
+            sample_cols = [c for c in ["name","year","country","facility","type","fatalities","injuries","source"] if c in aria_df_display.columns]
+            st.dataframe(
+                aria_df_display[sample_cols].sort_values("fatalities", ascending=False).head(100),
+                width='stretch', hide_index=True,
+                column_config={"fatalities": st.column_config.NumberColumn(format="%d คน"),
+                               "injuries":   st.column_config.NumberColumn(format="%d คน")}
+            )
+            csv_aria = aria_df_display.to_csv(index=False).encode("utf-8")
+            st.download_button("⬇️  ดาวน์โหลด ARIA Data (.csv)",
+                data=csv_aria, file_name="aria_oil_gas_data.csv", mime="text/csv")
+
+        st.markdown('''
+        <div style="margin-top:1rem;padding:12px 16px;background:#F7F5F2;border:1px solid #E8E4DF;font-size:12px;color:#555">
+        📌 <strong>เกี่ยวกับ ARIA/BARPI:</strong> ฐานข้อมูลอุบัติเหตุอุตสาหกรรมโดย French Ministry of Ecology
+        · 53,000+ เหตุการณ์ตั้งแต่ปี 1992 · ครอบคลุมทั่วโลก · ใบอนุญาต Open Licence 2.0 (ใช้ฟรี)
+        · <a href="https://www.aria.developpement-durable.gouv.fr/?lang=en" target="_blank" style="color:#FF4B1F">aria.developpement-durable.gouv.fr</a>
+        </div>
+        ''', unsafe_allow_html=True)
+
+# ── TAB 6: BSEE ──
 with tab_bsee:
     st.markdown('<div class="section-header"><span class="section-label">BSEE · bsee.gov</span><span class="section-title">Offshore Trends — Gulf of Mexico</span><span class="section-line"></span></div>', unsafe_allow_html=True)
     bsee = pd.DataFrame(BSEE_STATS)
